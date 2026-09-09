@@ -10,7 +10,7 @@
     <template #body>
       <div class="d-flex flex-column justify-center px-3">
         <div class="text-body-1 text--light pt-7 pb-4">
-          <v-form v-model="valid" ref="form">
+          <v-form v-model="valid" ref="formRef">
             <v-text-field
               v-model="form.name"
               variant="outlined"
@@ -37,7 +37,7 @@
               label="Department"
             />
             <v-text-field
-              v-if="!this.edit"
+              v-if="!edit"
               v-model="form.password"
               :append-inner-icon="visible ? 'fas fa-eye' : 'fas fa-eye-slash'"
               :type="visible ? 'text' : 'password'"
@@ -47,7 +47,7 @@
               @click:append-inner="visible = !visible"
             />
             <v-text-field
-              v-if="!this.edit"
+              v-if="!edit"
               v-model="form.passwordConfirm"
               :append-inner-icon="
                 visibleConfirm ? 'fas fa-eye' : 'fas fa-eye-slash'
@@ -75,175 +75,135 @@
     </template>
   </ui-dialog>
 </template>
-<script>
+<script setup>
+import { reactive, ref, computed, onBeforeMount, watch, useAttrs } from "vue";
 import UiDialog from "../UI/dialog.vue";
+import { useUsersStore } from "@/store/users";
 
-export default {
-  name: "UsersEdit",
-  components: { UiDialog },
-  props: {
-    user: {
-      type: Object,
-      default: () => {},
-    },
-    edit: {
-      type: Boolean,
-      default: false,
-    },
+defineOptions({ name: "UsersEdit" });
+
+const props = defineProps({
+  user: {
+    type: Object,
+    default: () => {},
   },
-  data() {
-    return {
-      visible: false,
-      visibleConfirm: false,
-      valid: false,
-      form: {
-        name: "",
-        email: "",
-        roles: [],
-        department: "",
-        password: "",
-        passwordConfirm: "",
-      },
-    };
+  edit: {
+    type: Boolean,
+    default: false,
   },
-  beforeMount() {
-    if (this.edit && Object.keys(this.user).length) {
-      this.form = Object.assign({}, this.user);
+});
+
+const emit = defineEmits(["close", "success", "error"]);
+
+const usersStore = useUsersStore();
+const attrs = useAttrs();
+
+const visible = ref(false);
+const visibleConfirm = ref(false);
+const valid = ref(false);
+const formRef = ref(null);
+
+const defaultForm = () => ({
+  name: "",
+  email: "",
+  roles: [],
+  department: "",
+  password: "",
+  passwordConfirm: "",
+});
+
+const form = reactive(defaultForm());
+
+onBeforeMount(() => {
+  if (props.edit && Object.keys(props.user).length) {
+    Object.assign(form, props.user);
+  }
+});
+
+watch(
+  () => props.user,
+  () => {
+    if (Object.keys(props.user).length) {
+      Object.assign(form, props.user);
     }
   },
-  watch: {
-    user: {
-      handler() {
-        if (Object.keys(this.user).length) {
-          this.form = Object.assign({}, this.user);
-        }
-      },
-      deep: true,
-    },
-  },
-  computed: {
-    dialogTitle() {
-      return this.edit ? "Edit User" : "Add User";
-    },
-    dialogButtonText() {
-      return this.edit ? "Edit" : "Add";
-    },
-    dialogProps() {
-      return {
-        scrollable: true,
-        ...this.$attrs,
-      };
-    },
-    userRoles() {
-      return [
-        { title: "Admin", value: "ADMIN" },
-        { title: "User", value: "USER" },
-      ];
-    },
-  },
-  methods: {
-    passwordRule(v) {
-      if (!v) {
-        return false;
-      }
-      return (
-        this.form.password === this.form.passwordConfirm ||
-        "Passwords don't match"
-      );
-    },
-    requiredRule(v) {
-      return !!v || "This field is required";
-    },
-    emailRule(v) {
-      if (!v) {
-        return false;
-      }
-      if (v.length <= 6 || v.length >= 128) {
-        return false;
-      }
-      const emailRegExp =
-        /^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/;
-      return emailRegExp.test(v) || "Invalid Email Format";
-    },
-    async editUser() {
-      if ("form" in this.$refs) {
-        await this.$refs.form.validate();
-      }
+  { deep: true }
+);
 
-      if (this.valid) {
-        let url = `${import.meta.env.VITE_SERVICE_API}/users`;
+const dialogTitle = computed(() => (props.edit ? "Edit User" : "Add User"));
+const dialogButtonText = computed(() => (props.edit ? "Edit" : "Add"));
+const dialogProps = computed(() => ({
+  scrollable: true,
+  ...attrs,
+}));
+const userRoles = computed(() => [
+  { title: "Admin", value: "ADMIN" },
+  { title: "User", value: "USER" },
+]);
 
-        if (this.edit) {
-          url += `/${this.form.id}`;
-          delete this.form.id;
-          delete this.form.dateCreated;
-          delete this.form.dateUpdated;
-          delete this.form.enabled;
-        }
+function passwordRule(v) {
+  if (!v) {
+    return false;
+  }
+  return form.password === form.passwordConfirm || "Passwords don't match";
+}
 
-        try {
-          const fetchCall = await fetch(url, {
-            method: this.edit ? "PUT" : "POST",
-            headers: {
-              Accept: "application/json",
-              "Content-type": "application/json",
-              Authorization: `Bearer ${import.meta.env.VITE_SERVICE_TOKEN}`,
-            },
-            body: JSON.stringify(this.form),
-          });
-          let userPostData;
+function requiredRule(v) {
+  return !!v || "This field is required";
+}
 
-          try {
-            userPostData = await fetchCall.json();
-          } catch (error) {
-            const errors = [
-              { message: "Returned post data couldn't be parsed" },
-              { message: `Error: ${error}` },
-            ];
-            this.$emit("error", errors);
-          }
+function emailRule(v) {
+  if (!v) {
+    return false;
+  }
+  if (v.length <= 6 || v.length >= 128) {
+    return false;
+  }
+  const emailRegExp =
+    /^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/;
+  return emailRegExp.test(v) || "Invalid Email Format";
+}
 
-          switch (fetchCall.status) {
-            case 200:
-            case 201:
-              this.$emit("success");
-              this.form = {
-                name: "",
-                email: "",
-                roles: [],
-                department: "",
-                password: "",
-                passwordConfirm: "",
-              };
-              break;
-            default: {
-              const errors = [
-                { message: "Creating user went wrong" },
-                { message: `Error Code: ${fetchCall.status}` },
-                { message: userPostData.error },
-              ];
-              this.$emit("error", errors);
-              break;
-            }
-          }
-        } catch (error) {
-          const errors = [
-            { message: "Post call failed" },
-            { message: `Error: ${error}` },
-          ];
-          this.$emit("error", errors);
-        }
-      }
-    },
-    closeDialog() {
-      this.$emit("close");
-    },
-    success() {
-      this.$emit("success");
-      this.closeDialog();
-    },
-  },
-};
+async function editUser() {
+  if (formRef.value) {
+    await formRef.value.validate();
+  }
+
+  if (!valid.value) {
+    return;
+  }
+
+  const userId = form.id;
+
+  if (props.edit) {
+    delete form.id;
+    delete form.dateCreated;
+    delete form.dateUpdated;
+    delete form.enabled;
+  }
+
+  try {
+    if (props.edit) {
+      await usersStore.updateUser(userId, form);
+    } else {
+      await usersStore.createUser(form);
+    }
+
+    emit("success");
+    Object.assign(form, defaultForm());
+  } catch (error) {
+    const errors = [
+      { message: "Creating user went wrong" },
+      { message: `Error Code: ${error.response?.status}` },
+      { message: error.response?.data?.error },
+    ];
+    emit("error", errors);
+  }
+}
+
+function closeDialog() {
+  emit("close");
+}
 </script>
 <style lang="scss" scoped>
 .text--caption {

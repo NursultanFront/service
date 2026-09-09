@@ -10,7 +10,7 @@
     <template #body>
       <div class="d-flex flex-column justify-center">
         <div class="text-body-1 text--light pt-7 pb-4">
-          <v-form v-model="valid" ref="form">
+          <v-form v-model="valid" ref="formRef">
             <v-row no-gutters>
               <v-col cols="12" class="px-2">
                 <v-text-field
@@ -90,179 +90,129 @@
     </template>
   </ui-dialog>
 </template>
-<script>
+<script setup>
+import { reactive, ref, computed, onBeforeMount, watch, useAttrs } from "vue";
 import Countries from "../Users/Countries.js";
 import UiDialog from "../UI/dialog.vue";
+import { useHomesStore } from "@/store/homes";
 
-export default {
-  name: "HomeEdit",
-  components: { UiDialog },
-  props: {
-    userId: {
-      type: String,
-      default: "",
-    },
-    home: {
-      type: Object,
-      default: () => {},
-    },
-    edit: {
-      type: Boolean,
-      default: false,
-    },
+defineOptions({ name: "HomeEdit" });
+
+const props = defineProps({
+  userId: {
+    type: String,
+    default: "",
   },
-  data() {
-    return {
-      valid: false,
-      form: {
-        type: "",
-        address: {
-          address1: "",
-          address2: "",
-          zipCode: "",
-          city: "",
-          state: "",
-          country: "",
-        },
-      },
-    };
+  home: {
+    type: Object,
+    default: () => {},
   },
-  beforeMount() {
-    if (this.edit) {
-      this.form = this.home;
+  edit: {
+    type: Boolean,
+    default: false,
+  },
+});
+
+const emit = defineEmits(["close", "success", "error"]);
+
+const homesStore = useHomesStore();
+const attrs = useAttrs();
+
+const valid = ref(false);
+const formRef = ref(null);
+
+const defaultForm = () => ({
+  type: "",
+  address: {
+    address1: "",
+    address2: "",
+    zipCode: "",
+    city: "",
+    state: "",
+    country: "",
+  },
+});
+
+const form = reactive(defaultForm());
+
+onBeforeMount(() => {
+  if (props.edit) {
+    Object.assign(form, props.home);
+  }
+});
+
+watch(
+  () => props.home,
+  () => {
+    if (Object.keys(props.home).length) {
+      Object.assign(form, props.home);
     }
   },
-  watch: {
-    home: {
-      handler() {
-        if (Object.keys(this.home).length) {
-          this.form = Object.assign({}, this.home);
-        }
-      },
-      deep: true,
-    },
-  },
-  computed: {
-    dialogTitle() {
-      return this.edit ? "Edit Home" : "Add Home";
-    },
-    dialogButtonText() {
-      return this.edit ? "Edit" : "Add";
-    },
-    dialogProps() {
-      return {
-        scrollable: true,
-        ...this.$attrs,
-      };
-    },
-    countries() {
-      return Countries;
-    },
-  },
-  methods: {
-    requiredRule(v) {
-      return !!v || "This field is required";
-    },
-    async editHome() {
-      if ("form" in this.$refs) {
-        await this.$refs.form.validate();
+  { deep: true }
+);
+
+const dialogTitle = computed(() => (props.edit ? "Edit Home" : "Add Home"));
+const dialogButtonText = computed(() => (props.edit ? "Edit" : "Add"));
+const dialogProps = computed(() => ({
+  scrollable: true,
+  ...attrs,
+}));
+const countries = computed(() => Countries);
+
+function requiredRule(v) {
+  return !!v || "This field is required";
+}
+
+async function editHome() {
+  if (formRef.value) {
+    await formRef.value.validate();
+  }
+
+  if (!valid.value) {
+    return;
+  }
+
+  const homeId = form.id;
+
+  if (props.edit) {
+    delete form.id;
+    delete form.userID;
+    delete form.dateCreated;
+    delete form.dateUpdated;
+  } else {
+    form.userID = props.userId;
+  }
+
+  try {
+    if (props.edit) {
+      await homesStore.updateHome(homeId, form);
+    } else {
+      await homesStore.createHome(form);
+    }
+
+    emit("success");
+    Object.assign(form, defaultForm());
+  } catch (error) {
+    const homePostData = error.response?.data || {};
+    const errors = [
+      { message: "Creating home went wrong" },
+      { message: `Error Code: ${error.response?.status}` },
+      { message: homePostData.error },
+    ];
+    if (homePostData.fields) {
+      for (let i = 0; i < Object.values(homePostData.fields).length; i++) {
+        errors.push({
+          message: Object.values(homePostData.fields)[i],
+        });
       }
+    }
+    emit("error", errors);
+  }
+}
 
-      if (this.valid) {
-        let url = `${import.meta.env.VITE_SERVICE_API}/homes`;
-
-        if (this.edit) {
-          url += `/${this.form.id}`;
-          delete this.form.id;
-          delete this.form.userID;
-          delete this.form.dateCreated;
-          delete this.form.dateUpdated;
-        }
-
-        let nh = this.form;
-
-        if (!this.edit) {
-          nh.userID = this.userId;
-        }
-        nh = JSON.stringify(nh);
-
-        try {
-          const fetchCall = await fetch(url, {
-            method: this.edit ? "PUT" : "POST",
-            headers: {
-              Accept: "application/json",
-              "Content-type": "application/json",
-              Authorization: `Bearer ${import.meta.env.VITE_SERVICE_TOKEN}`,
-            },
-            body: nh,
-          });
-          let homePostData;
-
-          try {
-            homePostData = await fetchCall.json();
-          } catch (error) {
-            const errors = [
-              { message: "Returned post data couldn't be parsed" },
-              { message: `Error: ${error}` },
-            ];
-            this.$emit("error", errors);
-          }
-
-          switch (fetchCall.status) {
-            case 200:
-            case 201:
-              this.$emit("success");
-              this.form = {
-                type: "",
-                address: {
-                  address1: "",
-                  address2: "",
-                  zipCode: "",
-                  city: "",
-                  state: "",
-                  country: "",
-                },
-              };
-              break;
-            default: {
-              const errors = [
-                { message: "Creating home went wrong" },
-                { message: `Error Code: ${fetchCall.status}` },
-                { message: homePostData.error },
-              ];
-              if (homePostData.fields) {
-                for (
-                  let i = 0;
-                  i < Object.values(homePostData.fields).length;
-                  i++
-                ) {
-                  errors.push({
-                    message: Object.values(homePostData.fields)[i],
-                  });
-                }
-              }
-              this.$emit("error", errors);
-              break;
-            }
-          }
-        } catch (error) {
-          const errors = [
-            { message: "Post call failed" },
-            { message: `Error: ${error}` },
-          ];
-          this.$emit("error", errors);
-        }
-      }
-    },
-    closeDialog() {
-      this.$emit("close");
-    },
-    success() {
-      this.$emit("success");
-      this.closeDialog();
-    },
-  },
-};
+function closeDialog() {
+  emit("close");
+}
 </script>
 <style lang="scss" scoped>
 .text--caption {

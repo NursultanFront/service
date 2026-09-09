@@ -33,19 +33,19 @@
   </v-btn-toggle>
 </template>
 
-<script>
-export default {
-  name: "UserHomesDataTableActions",
-  props: {
-    item: {
-      type: Object,
-      default: () => ({}),
-    },
+<script setup>
+defineOptions({ name: "UserHomesDataTableActions" });
+
+defineProps({
+  item: {
+    type: Object,
+    default: () => ({}),
   },
-  methods: {
-    action(type) {
-      this.$emit(`${type}`);
-    },
-  },
-};
+});
+
+const emit = defineEmits(["edit", "delete"]);
+
+function action(type) {
+  emit(type);
+}
 </script>

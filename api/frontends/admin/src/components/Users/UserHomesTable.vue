@@ -27,112 +27,84 @@
     </template>
   </data-table-server>
 </template>
-<script>
+<script setup>
+import { reactive, ref, computed, watch } from "vue";
 import DataTableServer from "../DataTable/DataTableServer.vue";
 import { UserHomesTableHeaders } from "../Users/Users.js";
 import UsersHomeTableActions from "../Users/UsersHomeTableActions.vue";
 import SortQuery from "../DataTable/SortQuery";
 import Countries from "../Users/Countries.js";
+import { useHomesStore } from "@/store/homes";
 
-export default {
-  name: "UserHomesTable",
-  components: {
-    DataTableServer,
-    UsersHomeTableActions,
-  },
-  props: {
-    userId: {
-      type: String,
-      default: "",
-      required: true,
-    },
-  },
-  data() {
-    return {
-      tableOptions: {
-        page: 1,
-        itemsPerPage: 3,
-        sortBy: [],
-      },
-      error: {},
-      users: [],
-      loading: false,
-      serverItemsLength: 0,
-      usersItemsPerPageOptions: [
-        { title: "1", value: 1 },
-        { title: "2", value: 2 },
-        { title: "3", value: 3 },
-      ],
-    };
-  },
-  watch: {
-    userId() {
-      this.loadItems();
-    },
-  },
-  computed: {
-    countries() {
-      return Countries;
-    },
-    headers() {
-      return UserHomesTableHeaders;
-    },
-    dataTableProps() {
-      return {
-        headers: this.headers,
-        items: this.users,
-        footerProps: this.usersItemsPerPageOptions,
-        serverItemsLength: this.serverItemsLength,
-        hasActions: true,
-        loading: false,
-        ...this.$attrs,
-      };
-    },
-  },
-  methods: {
-    getCountry(code) {
-      return this.countries.filter((e) => e.value === code)[0].title;
-    },
-    sortQuery(s) {
-      return SortQuery(s);
-    },
-    async loadItems() {
-      if (this.userId === "") {
-        return;
-      }
+defineOptions({ name: "UserHomesTable" });
 
-      const { page, itemsPerPage, sortBy } = this.tableOptions;
-
-      const sort = this.sortQuery(sortBy);
-
-      try {
-        const fetchCall = await fetch(
-          `${import.meta.env.VITE_SERVICE_API}/homes?user_id=${
-            this.userId
-          }&page=${page}&rows=${itemsPerPage}${sort ? sort : ""}`,
-          {
-            headers: {
-              Authorization: `Bearer ${import.meta.env.VITE_SERVICE_TOKEN}`,
-            },
-          }
-        );
-        if (fetchCall.ok) {
-          try {
-            const fetchedData = await fetchCall.json();
-
-            this.serverItemsLength = fetchedData.total;
-            this.users = fetchedData.items;
-          } catch (error) {
-            console.log("Data to parse:", fetchCall);
-            console.log("Users JSON Parse failed:", error);
-          }
-          return;
-        }
-      } catch (error) {
-        console.log("fetchedCall failed:", error);
-        this.error = error;
-      }
-    },
+const props = defineProps({
+  userId: {
+    type: String,
+    default: "",
+    required: true,
   },
-};
+});
+
+defineEmits(["delete", "edit"]);
+
+const homesStore = useHomesStore();
+
+const tableOptions = reactive({
+  page: 1,
+  itemsPerPage: 3,
+  sortBy: [],
+});
+const error = ref({});
+const users = ref([]);
+const loading = ref(false);
+const serverItemsLength = ref(0);
+const usersItemsPerPageOptions = [
+  { title: "1", value: 1 },
+  { title: "2", value: 2 },
+  { title: "3", value: 3 },
+];
+
+const countries = computed(() => Countries);
+const headers = computed(() => UserHomesTableHeaders);
+
+function getCountry(code) {
+  return countries.value.filter((e) => e.value === code)[0].title;
+}
+
+function sortQuery(s) {
+  return SortQuery(s);
+}
+
+async function loadItems() {
+  if (props.userId === "") {
+    return;
+  }
+
+  const { page, itemsPerPage, sortBy } = tableOptions;
+
+  const sort = sortQuery(sortBy);
+
+  try {
+    const data = await homesStore.fetchHomes({
+      userId: props.userId,
+      page,
+      rows: itemsPerPage,
+      sort,
+    });
+
+    serverItemsLength.value = data.total;
+    users.value = data.items;
+  } catch (err) {
+    console.log("fetchedCall failed:", err);
+    error.value = err;
+  }
+}
+
+watch(
+  () => props.userId,
+  () => loadItems()
+);
+
+defineExpose({ loadItems });
 </script>

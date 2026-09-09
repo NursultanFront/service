@@ -38,99 +38,73 @@
     </template>
   </data-table-server>
 </template>
-<script>
+<script setup>
+import { reactive, ref, computed } from "vue";
+import { useRouter } from "vue-router";
 import DataTableServer from "../DataTable/DataTableServer.vue";
 import { UsersTableHeaders } from "../Users/Users.js";
 import UsersTableActions from "../Users/UsersTableActions.vue";
 import SortQuery from "../DataTable/SortQuery";
+import { useUsersStore } from "@/store/users";
 
-export default {
-  name: "UsersTable",
-  components: {
-    DataTableServer,
-    UsersTableActions,
-  },
-  data() {
-    return {
-      tableOptions: {
-        page: 1,
-        itemsPerPage: 5,
-        sortBy: [],
-      },
-      error: {},
-      users: [],
-      loading: false,
-      serverItemsLength: 0,
-      usersItemsPerPageOptions: [
-        { title: "5", value: 5 },
-        { title: "10", value: "10" },
-        { title: "20", value: "20" },
-      ],
-    };
-  },
-  computed: {
-    headers() {
-      return UsersTableHeaders;
-    },
-    dataTableProps() {
-      return {
-        headers: this.headers,
-        items: this.users,
-        footerProps: this.usersItemsPerPageOptions,
-        serverItemsLength: this.serverItemsLength,
-        hasActions: true,
-        loading: false,
-        ...this.$attrs,
-      };
-    },
-  },
-  methods: {
-    sortQuery(s) {
-      return SortQuery(s);
-    },
-    goToClientsProfile(id, e) {
-      let userId = id;
-      if (typeof userId !== "string") {
-        userId = e.item.id;
-      }
-      this.$router.push({
-        name: "UserProfile",
-        params: { id: userId },
-      });
-    },
-    async loadItems() {
-      const { page, itemsPerPage, sortBy } = this.tableOptions;
+defineOptions({ name: "UsersTable" });
 
-      const sort = this.sortQuery(sortBy);
+defineEmits(["delete", "edit"]);
 
-      try {
-        const fetchCall = await fetch(
-          `${
-            import.meta.env.VITE_SERVICE_API
-          }/users?page=${page}&rows=${itemsPerPage}${sort ? sort : ""}`,
-          {
-            headers: {
-              Authorization: `Bearer ${import.meta.env.VITE_SERVICE_TOKEN}`,
-            },
-          }
-        );
-        if (fetchCall.ok) {
-          try {
-            const fetchedData = await fetchCall.json();
+const router = useRouter();
+const usersStore = useUsersStore();
 
-            this.serverItemsLength = fetchedData.total;
-            this.users = fetchedData.items;
-          } catch (error) {
-            console.log("Data to parse:", fetchCall);
-            console.log("Users JSON Parse failed:", error);
-          }
-          return;
-        }
-      } catch (error) {
-        console.log("fetchedCall failed:", error);
-        this.error = error;
-      }
-    },
-  },
-};
+const tableOptions = reactive({
+  page: 1,
+  itemsPerPage: 5,
+  sortBy: [],
+});
+const error = ref({});
+const users = ref([]);
+const loading = ref(false);
+const serverItemsLength = ref(0);
+const usersItemsPerPageOptions = [
+  { title: "5", value: 5 },
+  { title: "10", value: "10" },
+  { title: "20", value: "20" },
+];
+
+const headers = computed(() => UsersTableHeaders);
+
+function sortQuery(s) {
+  return SortQuery(s);
+}
+
+function goToClientsProfile(id, e) {
+  let userId = id;
+  if (typeof userId !== "string") {
+    userId = e.item.id;
+  }
+  router.push({
+    name: "UserProfile",
+    params: { id: userId },
+  });
+}
+
+async function loadItems() {
+  const { page, itemsPerPage, sortBy } = tableOptions;
+
+  const sort = sortQuery(sortBy);
+
+  try {
+    const data = await usersStore.fetchUsers({
+      page,
+      rows: itemsPerPage,
+      sort,
+    });
+
+    serverItemsLength.value = data.total;
+    users.value = data.items;
+  } catch (err) {
+    console.log("fetchedCall failed:", err);
+    error.value = err;
+  }
+}
+
+defineExpose({ loadItems });
 </script>

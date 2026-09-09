@@ -24,59 +24,39 @@
     </v-responsive>
   </div>
 </template>
-<script>
+<script setup>
+import { ref, onMounted, watch } from "vue";
 import UserDetails from "../Users/UserDetails.vue";
 import UserHomes from "../Users/UserHomes.vue";
+import { useUsersStore } from "@/store/users";
 
-export default {
-  components: { UserDetails, UserHomes },
-  props: {
-    userId: {
-      type: String,
-      default: "",
-    },
+const props = defineProps({
+  userId: {
+    type: String,
+    default: "",
   },
-  data() {
-    return {
-      error: null,
-      user: {},
-    };
-  },
-  mounted() {
-    this.fetchUser(this.userId);
-  },
-  watch: {
-    userId(newVal) {
-      this.fetchUser(newVal);
-    },
-  },
-  methods: {
-    async fetchUser(userId) {
-      try {
-        const fetchCall = await fetch(
-          `${import.meta.env.VITE_SERVICE_API}/users/${userId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${import.meta.env.VITE_SERVICE_TOKEN}`,
-            },
-          }
-        );
-        if (fetchCall.ok) {
-          try {
-            const fetchedData = await fetchCall.json();
+});
 
-            this.user = fetchedData;
-          } catch (error) {
-            console.log("Data to parse:", fetchCall);
-            console.log("Users JSON Parse failed:", error);
-          }
-          return;
-        }
-      } catch (error) {
-        console.log("User fetch failed:", error);
-        this.error = error;
-      }
-    },
-  },
-};
+const usersStore = useUsersStore();
+
+const error = ref(null);
+const user = ref({});
+
+async function fetchUser(userId) {
+  try {
+    user.value = await usersStore.fetchUser(userId);
+  } catch (err) {
+    console.log("User fetch failed:", err);
+    error.value = err;
+  }
+}
+
+onMounted(() => {
+  fetchUser(props.userId);
+});
+
+watch(
+  () => props.userId,
+  (newVal) => fetchUser(newVal)
+);
 </script>

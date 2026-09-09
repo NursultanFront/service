@@ -30,36 +30,37 @@
   </v-dialog>
 </template>
 
-<script>
-export default {
-  name: "UiDialog",
-  props: {
-    noTitle: {
-      type: Boolean,
-      default: false,
-    },
-    scrollable: {
-      type: Boolean,
-      default: false,
-    },
-    showActions: {
-      type: Boolean,
-      default: true,
-    },
-    showCloseButton: {
-      type: Boolean,
-      default: true,
-    },
-    contentClass: {
-      type: String,
-      default: "ui-dialog",
-    },
-    persistent: {
-      type: Boolean,
-      default: false,
-    },
+<script setup>
+defineOptions({ name: "UiDialog" });
+
+defineProps({
+  noTitle: {
+    type: Boolean,
+    default: false,
   },
-};
+  scrollable: {
+    type: Boolean,
+    default: false,
+  },
+  showActions: {
+    type: Boolean,
+    default: true,
+  },
+  showCloseButton: {
+    type: Boolean,
+    default: true,
+  },
+  contentClass: {
+    type: String,
+    default: "ui-dialog",
+  },
+  persistent: {
+    type: Boolean,
+    default: false,
+  },
+});
+
+defineEmits(["close"]);
 </script>
 
 <style lang="scss">

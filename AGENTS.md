@@ -53,6 +53,44 @@ You can ask the user for their name to make the interaction more natural.
   `*bus` package, follow the `business-layer-extensions` skill — it holds the three-piece
   pattern (seam, extension, wiring), wrap-order rules, reference examples, and a checklist.
 
+## Local Development Workflow
+
+Combine two modes — do not default to full Docker rebuilds for every small change.
+
+- **Fast iteration (default while actively coding/debugging a backend change):** run the
+  service directly with `go run`, against the already-running Postgres container. This takes
+  seconds per iteration instead of minutes, and creates zero Docker image/layer clutter.
+  ```bash
+  export SALES_DB_HOST=localhost:5434  # host:port mapped to Postgres, see docker_compose.yaml
+  export SALES_AUTH_HOST=http://localhost:6060   # docker-network name "auth" only resolves inside compose
+  export SALES_WEB_CORS_ALLOWED_ORIGINS=http://localhost:3001
+  go run api/services/sales/main.go
+  ```
+  ```bash
+  export AUTH_DB_HOST=localhost:5434
+  export AUTH_WEB_CORS_ALLOWED_ORIGINS=http://localhost:3001
+  go run api/services/auth/main.go
+  ```
+  Postgres itself still runs in Docker (`docker compose up -d database`) — only the Go
+  service binaries run natively. Ctrl+C and re-run after each code change.
+- **Final verification (before saying "done" on a backend change):** rebuild and run the real
+  Docker Compose stack once, to catch issues that only show up in the containerized
+  environment (container-network DNS between services, GOMAXPROCS/resource limits, the
+  actual production-shaped build).
+  ```bash
+  make compose-build-up
+  ```
+  Then clean up the dangling `<none>` images this leaves behind (Docker only detaches the old
+  image from its tag on rebuild, it does not delete it):
+  ```bash
+  docker image prune -f
+  ```
+- Whichever mode is running, `CORSAllowedOrigins` defaults to `*` (non-credentialed — see
+  `foundation/web/web.go`'s CORS handling). The httpOnly auth cookie flow only works when the
+  frontend's exact origin (`http://localhost:3001` in dev) is explicitly configured via
+  `SALES_WEB_CORS_ALLOWED_ORIGINS` / `AUTH_WEB_CORS_ALLOWED_ORIGINS` — set it explicitly in
+  both `go run` env vars and `docker_compose.yaml`, don't rely on the wildcard default.
+
 ## Tools
 
 - Prefer `rg` (ripgrep) instead of `grep`.

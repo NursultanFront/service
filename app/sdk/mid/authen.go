@@ -26,7 +26,7 @@ func Authenticate(client authclient.Authenticator) web.MidFunc {
 			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 			defer cancel()
 
-			resp, err := client.Authenticate(ctx, r.Header.Get("authorization"))
+			resp, err := client.Authenticate(ctx, authorizationHeader(r))
 			if err != nil {
 				return errs.New(errs.Unauthenticated, err)
 			}
@@ -43,12 +43,28 @@ func Authenticate(client authclient.Authenticator) web.MidFunc {
 	return m
 }
 
+// authorizationHeader returns the bearer token for the incoming request,
+// preferring the Authorization header (used by non-browser/service clients)
+// and falling back to the httpOnly auth_token cookie (used by the browser
+// admin UI, which never has direct JS access to the raw token).
+func authorizationHeader(r *http.Request) string {
+	if v := r.Header.Get("authorization"); v != "" {
+		return v
+	}
+
+	c, err := r.Cookie("auth_token")
+	if err != nil {
+		return ""
+	}
+
+	return "Bearer " + c.Value
+}
+
 // Bearer processes JWT authentication logic.
 func Bearer(ath *auth.Auth) web.MidFunc {
 	m := func(next web.HandlerFunc) web.HandlerFunc {
 		h := func(ctx context.Context, r *http.Request) web.Encoder {
-			authorizationHeader := r.Header.Get("authorization")
-			ctx, err := HandleAuthentication(ctx, ath, authorizationHeader)
+			ctx, err := HandleAuthentication(ctx, ath, authorizationHeader(r))
 			if err != nil {
 				return err
 			}

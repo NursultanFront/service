@@ -19,13 +19,36 @@
         variant="text"
       ></v-list-item>
     </v-list>
+
+    <template #append>
+      <v-list density="compact" nav>
+        <v-list-item
+          class="bar__items"
+          prepend-icon="fas fa-sign-out-alt"
+          title="Logout"
+          variant="text"
+          @click="logout"
+        ></v-list-item>
+      </v-list>
+    </template>
   </v-navigation-drawer>
 </template>
 
 <script setup>
+import { useRouter } from "vue-router";
+import { useAuthStore } from "@/store/auth";
+
 const availableMenus = [
   { title: "Users", name: "Users", icon: "fas fa-users" },
 ];
+
+const authStore = useAuthStore();
+const router = useRouter();
+
+async function logout() {
+  await authStore.logout();
+  router.push({ name: "Login" });
+}
 </script>
 
 <style>

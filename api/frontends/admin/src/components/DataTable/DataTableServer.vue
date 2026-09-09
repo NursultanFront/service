@@ -10,44 +10,41 @@
     </template>
   </v-data-table-server>
 </template>
-<script>
-export default {
-  props: {
-    hasActions: {
-      type: Boolean,
-      default: false,
-    },
-    loading: {
-      type: Boolean,
-      default: false,
-    },
-    headersLength: {
-      type: Number,
-      default: 6,
-    },
-    tableHeight: {
-      type: String,
-      default: "500px",
-    },
-    isFirstColumnFixed: {
-      type: Boolean,
-      default: false,
-    },
-    itemClass: {
-      type: Function,
-      default: () => {},
-    },
+<script setup>
+import { computed } from "vue";
+
+const props = defineProps({
+  hasActions: {
+    type: Boolean,
+    default: false,
   },
-  computed: {
-    classes() {
-      return {
-        "ui-data-table": true,
-        "ui-data-table--fixed": this.isFirstColumnFixed,
-        "ui-data-table--actions": this.hasActions,
-      };
-    },
+  loading: {
+    type: Boolean,
+    default: false,
   },
-};
+  headersLength: {
+    type: Number,
+    default: 6,
+  },
+  tableHeight: {
+    type: String,
+    default: "500px",
+  },
+  isFirstColumnFixed: {
+    type: Boolean,
+    default: false,
+  },
+  itemClass: {
+    type: Function,
+    default: () => {},
+  },
+});
+
+const classes = computed(() => ({
+  "ui-data-table": true,
+  "ui-data-table--fixed": props.isFirstColumnFixed,
+  "ui-data-table--actions": props.hasActions,
+}));
 </script>
 
 <style lang="scss">
