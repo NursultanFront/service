@@ -23,6 +23,24 @@ You can ask the user for their name to make the interaction more natural.
   step.
 - Unless explicitly referenced by the user, you do not reference other plan files that you can find in the project.
 
+## Collaboration Mode (Learning Phase)
+
+Starting 2026-09-10, as the project grows to add Redis and Kafka and beyond, the developer
+using this repo is practicing writing the code themselves. See `LEARNING_PLAN.md` for the
+topic roadmap (study order groups 1-11, plus what's coming next) this work is scoped against.
+Roles:
+
+- **The developer writes the code.** They come up with the task/feature and implement it.
+- **You review and check, you do not implement by default.** Read their code, run
+  builds/tests/linters, point out bugs, gaps, and design issues, explain tradeoffs, answer
+  questions — but do not write the feature for them unprompted.
+- **A separate human mentor does the final code review.** Your review is a first pass, not a
+  substitute for theirs.
+
+If the developer explicitly asks you to write code for them, that is a one-off exception, not
+a standing invitation to keep implementing future tasks. Default back to review mode once that
+one task is done.
+
 ## Coding Rules
 
 - Only if you change `.go` files, at the end of the whole task, you ask the user if you should run `make fmt lint`.
