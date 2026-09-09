@@ -78,11 +78,30 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// then if the Origin value is in the list, set the
 		// Access-Control-Allow-Origin value to the same value as the Origin.
 
+		// "*" stays a true wildcard: no credentials, no reflecting the
+		// caller's Origin back - that combination would let any site read
+		// authenticated responses via a credentialed cross-site fetch. Only
+		// an explicitly configured, exact origin is allowed to receive
+		// Access-Control-Allow-Credentials, which is what lets the httpOnly
+		// auth cookie be sent cross-origin to a known, trusted frontend.
 		reqOrigin := r.Header.Get("Origin")
+		allowedOrigin := ""
+		credentialed := false
 		for _, origin := range a.origins {
-			if origin == "*" || origin == reqOrigin {
-				w.Header().Set("Access-Control-Allow-Origin", origin)
+			if origin == reqOrigin && reqOrigin != "" {
+				allowedOrigin = origin
+				credentialed = true
 				break
+			}
+			if origin == "*" {
+				allowedOrigin = "*"
+			}
+		}
+
+		if allowedOrigin != "" {
+			w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
+			if credentialed {
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
 			}
 		}
 

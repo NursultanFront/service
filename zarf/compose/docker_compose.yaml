@@ -47,7 +47,7 @@ services:
     container_name: auth
     restart: unless-stopped
     ports:
-      - "6000:6000"
+      - "6060:6000"
       - "6001:6001"
       - "6010:6010"
     healthcheck:
@@ -64,6 +64,7 @@ services:
       - AUTH_DB_PASSWORD=postgres
       - AUTH_DB_HOST=database
       - AUTH_DB_DISABLE_TLS=true
+      - AUTH_WEB_CORS_ALLOWED_ORIGINS=http://localhost:3001
       - KUBERNETES_NAMESPACE=compose
       - KUBERNETES_NAME=sales-system
       - KUBERNETES_POD_IP=10.5.0.5
@@ -91,6 +92,7 @@ services:
       - SALES_DB_HOST=database
       - SALES_DB_DISABLE_TLS=true
       - SALES_AUTH_HOST=http://auth:6000
+      - SALES_WEB_CORS_ALLOWED_ORIGINS=http://localhost:3001
       - KUBERNETES_NAMESPACE
       - KUBERNETES_NAME
       - KUBERNETES_POD_IP

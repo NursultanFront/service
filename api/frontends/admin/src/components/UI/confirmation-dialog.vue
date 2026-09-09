@@ -24,61 +24,54 @@
   </ui-dialog>
 </template>
 
-<script>
+<script setup>
+import { computed, useAttrs } from "vue";
 import UiDialog from "./dialog.vue";
 
-export default {
-  name: "UiConfirmationDialog",
-  components: { UiDialog },
-  props: {
-    title: {
-      type: String,
-      default: () => null,
-    },
-    text: {
-      type: String,
-      default: () => null,
-    },
-    buttonText: {
-      type: String,
-      default: () => null,
-    },
-    showCaption: {
-      type: Boolean,
-      default: () => true,
-    },
+defineOptions({ name: "UiConfirmationDialog" });
+
+const props = defineProps({
+  title: {
+    type: String,
+    default: () => null,
   },
-  data() {
-    return {};
+  text: {
+    type: String,
+    default: () => null,
   },
-  computed: {
-    dialogTitle() {
-      return this.title ?? "Confirm";
-    },
-    dialogText() {
-      return this.text ?? "Do you want to confirm this action?";
-    },
-    dialogButtonText() {
-      return this.buttonText ?? "Confirm";
-    },
-    dialogProps() {
-      return {
-        noTitle: true,
-        contentClass: "ui-dialog--confirmation",
-        ...this.$attrs,
-      };
-    },
+  buttonText: {
+    type: String,
+    default: () => null,
   },
-  methods: {
-    closeDialog() {
-      this.$emit("input", false);
-    },
-    confirm() {
-      this.$emit("confirm");
-      this.closeDialog();
-    },
+  showCaption: {
+    type: Boolean,
+    default: () => true,
   },
-};
+});
+
+const emit = defineEmits(["input", "confirm"]);
+
+const attrs = useAttrs();
+
+const dialogTitle = computed(() => props.title ?? "Confirm");
+const dialogText = computed(
+  () => props.text ?? "Do you want to confirm this action?"
+);
+const dialogButtonText = computed(() => props.buttonText ?? "Confirm");
+const dialogProps = computed(() => ({
+  noTitle: true,
+  contentClass: "ui-dialog--confirmation",
+  ...attrs,
+}));
+
+function closeDialog() {
+  emit("input", false);
+}
+
+function confirm() {
+  emit("confirm");
+  closeDialog();
+}
 </script>
 <style lang="scss" scoped>
 .text--caption {

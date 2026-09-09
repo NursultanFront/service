@@ -46,19 +46,19 @@
   </v-btn-toggle>
 </template>
 
-<script>
-export default {
-  name: "UsersDataTableActions",
-  props: {
-    item: {
-      type: Object,
-      default: () => ({}),
-    },
+<script setup>
+defineOptions({ name: "UsersDataTableActions" });
+
+defineProps({
+  item: {
+    type: Object,
+    default: () => ({}),
   },
-  methods: {
-    action(type) {
-      this.$emit(`${type}`);
-    },
-  },
-};
+});
+
+const emit = defineEmits(["profile", "edit", "delete"]);
+
+function action(type) {
+  emit(type);
+}
 </script>

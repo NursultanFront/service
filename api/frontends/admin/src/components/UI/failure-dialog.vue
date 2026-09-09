@@ -47,29 +47,29 @@
   </v-dialog>
 </template>
 
-<script>
-export default {
-  name: "UiFailureDialog",
-  props: {
-    title: {
-      type: String,
-      default: "",
-      required: true,
-    },
-    subtitle: {
-      type: String,
-      default: "",
-    },
-    errors: {
-      type: Array,
-      default: () => [],
-    },
+<script setup>
+defineOptions({ name: "UiFailureDialog" });
+
+defineProps({
+  title: {
+    type: String,
+    default: "",
+    required: true,
   },
-  methods: {
-    close() {
-      this.$emit("close", false);
-      this.$emit("input", false);
-    },
+  subtitle: {
+    type: String,
+    default: "",
   },
-};
+  errors: {
+    type: Array,
+    default: () => [],
+  },
+});
+
+const emit = defineEmits(["close", "input"]);
+
+function close() {
+  emit("close", false);
+  emit("input", false);
+}
 </script>

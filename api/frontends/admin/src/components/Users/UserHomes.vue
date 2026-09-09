@@ -59,147 +59,121 @@
     @close="dialogs.failure.open = false"
   />
 </template>
-<script>
+<script setup>
+import { reactive, ref, nextTick, defineAsyncComponent } from "vue";
 import UserHomesTable from "../Users/UserHomesTable";
-import HomeEdit from "../Users/HomeEdit";
+import { useHomesStore } from "@/store/homes";
 
-import UiConfirmationDialog from "../UI/confirmation-dialog.vue";
-import UiSuccessDialog from "../UI/success-dialog.vue";
-import UiFailureDialog from "../UI/failure-dialog.vue";
-import { nextTick } from "vue";
+// Dialogs are hidden until the user actually opens one (Add/Edit/Delete),
+// so there's no reason to ship and parse their code on the initial page
+// load - load them on demand instead.
+const HomeEdit = defineAsyncComponent(() => import("../Users/HomeEdit"));
+const UiConfirmationDialog = defineAsyncComponent(() =>
+  import("../UI/confirmation-dialog.vue")
+);
+const UiSuccessDialog = defineAsyncComponent(() =>
+  import("../UI/success-dialog.vue")
+);
+const UiFailureDialog = defineAsyncComponent(() =>
+  import("../UI/failure-dialog.vue")
+);
 
-export default {
-  name: "UserHomes",
-  components: {
-    UserHomesTable,
-    HomeEdit,
-    UiConfirmationDialog,
-    UiSuccessDialog,
-    UiFailureDialog,
-  },
-  props: {
-    userId: {
-      type: String,
-      default: "",
-      required: true,
-    },
-  },
-  data() {
-    return {
-      dialogs: {
-        edit: {
-          open: false,
-          edit: false,
-          item: {},
-        },
-        confirmation: {
-          open: false,
-          title: "Delete Home",
-          text: "Do you want to delete this home?",
-          buttonText: "Delete",
-          item: {},
-        },
-        success: {
-          open: false,
-          title: "",
-          subtitle: "",
-        },
-        failure: {
-          open: false,
-          title: "",
-          subtitle: "",
-          errors: [],
-        },
-      },
-    };
-  },
-  methods: {
-    openNewHome() {
-      this.dialogs.edit.open = true;
-      this.dialogs.edit.edit = false;
-    },
-    async openEdit(item) {
-      this.dialogs.edit.edit = true;
-      await nextTick();
-      this.dialogs.edit.item = item;
-      await nextTick();
-      this.dialogs.edit.open = true;
-    },
-    async sendDeleteHome() {
-      const { id } = this.dialogs.confirmation.item;
-      try {
-        const fetchCall = await fetch(
-          `${import.meta.env.VITE_SERVICE_API}/homes/${id}`,
-          {
-            method: "DELETE",
-            headers: {
-              Accept: "application/json",
-              "Content-type": "application/json",
-              Authorization: `Bearer ${import.meta.env.VITE_SERVICE_TOKEN}`,
-            },
-          }
-        );
+defineOptions({ name: "UserHomes" });
 
-        switch (fetchCall.status) {
-          case 204:
-            this.successDelete();
-            this.dialogs.confirmation.item = {};
-            break;
-          default: {
-            let homeDeleteData;
-            try {
-              homeDeleteData = await fetchCall.json();
-            } catch (error) {
-              const errors = [
-                { message: "Returned delete data couldn't be parsed" },
-                { message: `Error: ${error}` },
-              ];
-              this.failure(errors);
-            }
-            const errors = [
-              { message: "Deleting home went wrong" },
-              { message: `Error Code: ${fetchCall.status}` },
-              { message: homeDeleteData.error },
-            ];
-            this.failure(errors);
-            break;
-          }
-        }
-      } catch (error) {
-        const errors = [
-          { message: "Post call failed" },
-          { message: `Error: ${error}` },
-        ];
-        this.failure(errors);
-      }
-    },
-    async openDelete(item) {
-      this.dialogs.confirmation.item = item;
-      await nextTick();
-      this.dialogs.confirmation.open = true;
-    },
-    successDelete() {
-      this.dialogs.success.title = "Delete Success";
-      this.dialogs.success.subtitle = `Home deleted successfully`;
-      this.dialogs.success.open = true;
-      if ("homesTable" in this.$refs) this.$refs.homesTable.loadItems();
-    },
-    successEdit() {
-      const action = this.dialogs.edit.edit ? "edited" : "added";
-      this.dialogs.success.title = "Success";
-      this.dialogs.success.subtitle = `Home ${action} successfully`;
-      this.dialogs.success.open = true;
-      this.dialogs.edit.open = false;
-      this.dialogs.edit.edit = false;
-      this.dialogs.edit.item = {};
-      if ("homesTable" in this.$refs) this.$refs.homesTable.loadItems();
-    },
-    failure(errors) {
-      this.dialogs.failure.errors = errors;
-      this.dialogs.failure.title = "Something went wrong";
-      this.dialogs.failure.subtitle = "Creating user went wrong";
-      this.dialogs.failure.open = true;
-    },
+defineProps({
+  userId: {
+    type: String,
+    default: "",
+    required: true,
   },
-};
+});
+
+const homesStore = useHomesStore();
+const homesTable = ref(null);
+
+const dialogs = reactive({
+  edit: {
+    open: false,
+    edit: false,
+    item: {},
+  },
+  confirmation: {
+    open: false,
+    title: "Delete Home",
+    text: "Do you want to delete this home?",
+    buttonText: "Delete",
+    item: {},
+  },
+  success: {
+    open: false,
+    title: "",
+    subtitle: "",
+  },
+  failure: {
+    open: false,
+    title: "",
+    subtitle: "",
+    errors: [],
+  },
+});
+
+function openNewHome() {
+  dialogs.edit.open = true;
+  dialogs.edit.edit = false;
+}
+
+async function openEdit(item) {
+  dialogs.edit.edit = true;
+  await nextTick();
+  dialogs.edit.item = item;
+  await nextTick();
+  dialogs.edit.open = true;
+}
+
+async function sendDeleteHome() {
+  const { id } = dialogs.confirmation.item;
+  try {
+    await homesStore.deleteHome(id);
+    successDelete();
+    dialogs.confirmation.item = {};
+  } catch (error) {
+    const errors = [
+      { message: "Deleting home went wrong" },
+      { message: `Error Code: ${error.response?.status}` },
+      { message: error.response?.data?.error },
+    ];
+    failure(errors);
+  }
+}
+
+async function openDelete(item) {
+  dialogs.confirmation.item = item;
+  await nextTick();
+  dialogs.confirmation.open = true;
+}
+
+function successDelete() {
+  dialogs.success.title = "Delete Success";
+  dialogs.success.subtitle = `Home deleted successfully`;
+  dialogs.success.open = true;
+  homesTable.value?.loadItems();
+}
+
+function successEdit() {
+  const action = dialogs.edit.edit ? "edited" : "added";
+  dialogs.success.title = "Success";
+  dialogs.success.subtitle = `Home ${action} successfully`;
+  dialogs.success.open = true;
+  dialogs.edit.open = false;
+  dialogs.edit.edit = false;
+  dialogs.edit.item = {};
+  homesTable.value?.loadItems();
+}
+
+function failure(errors) {
+  dialogs.failure.errors = errors;
+  dialogs.failure.title = "Something went wrong";
+  dialogs.failure.subtitle = "Creating user went wrong";
+  dialogs.failure.open = true;
+}
 </script>

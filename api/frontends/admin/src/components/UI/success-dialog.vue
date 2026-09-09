@@ -33,30 +33,28 @@
   </v-dialog>
 </template>
 
-<script>
-export default {
-  name: "UiSuccessDialog",
-  props: {
-    title: {
-      type: String,
-      default: "",
-      required: true,
-    },
-    subtitle: {
-      type: String,
-      default: "",
-    },
+<script setup>
+defineOptions({ name: "UiSuccessDialog" });
+
+defineProps({
+  title: {
+    type: String,
+    default: "",
+    required: true,
   },
-  computed: {
-    h2Class() {
-      return "text-center text-body-1 text--light px-8 pt-3 pb-10 d-flex flex-column";
-    },
+  subtitle: {
+    type: String,
+    default: "",
   },
-  methods: {
-    close() {
-      this.$emit("close", false);
-      this.$emit("input", false);
-    },
-  },
-};
+});
+
+const emit = defineEmits(["close", "input"]);
+
+const h2Class =
+  "text-center text-body-1 text--light px-8 pt-3 pb-10 d-flex flex-column";
+
+function close() {
+  emit("close", false);
+  emit("input", false);
+}
 </script>

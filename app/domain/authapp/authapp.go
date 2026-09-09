@@ -37,7 +37,43 @@ func (a *app) token(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.New(errs.Internal, err)
 	}
 
+	// Also set the token as an httpOnly cookie so browser clients never
+	// need to touch the raw JWT in JS-accessible storage (localStorage),
+	// which closes off token theft via XSS. Non-browser clients (curl,
+	// admin CLI, service-to-service) keep using the JSON body above.
+	if w := web.GetWriter(ctx); w != nil {
+		cookie := http.Cookie{
+			Name:     "auth_token",
+			Value:    tkn,
+			Path:     "/",
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+		}
+		if claims.ExpiresAt != nil {
+			cookie.Expires = claims.ExpiresAt.Time
+		}
+		http.SetCookie(w, &cookie)
+	}
+
 	return token{Token: tkn}
+}
+
+// logout clears the httpOnly auth cookie set by token. JS cannot delete an
+// httpOnly cookie itself, so the browser has to ask the server to do it -
+// setting MaxAge to a negative value tells the browser to expire it now.
+func (a *app) logout(ctx context.Context, r *http.Request) web.Encoder {
+	if w := web.GetWriter(ctx); w != nil {
+		http.SetCookie(w, &http.Cookie{
+			Name:     "auth_token",
+			Value:    "",
+			Path:     "/",
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+			MaxAge:   -1,
+		})
+	}
+
+	return nil
 }
 
 func (a *app) authenticate(ctx context.Context, r *http.Request) web.Encoder {

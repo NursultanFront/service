@@ -8,7 +8,7 @@
         </v-card-title>
         <v-card-text>
           <users-table
-            ref="usersTable"
+            ref="usersTableRef"
             @delete="openDelete($event)"
             @edit="openEdit($event)"
           />
@@ -47,139 +47,111 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { reactive, ref, nextTick, defineAsyncComponent } from "vue";
 import UsersTable from "./UsersTable.vue";
-import UsersEdit from "./UsersEdit.vue";
+import { useUsersStore } from "@/store/users";
 
-import UiConfirmationDialog from "../UI/confirmation-dialog.vue";
-import UiSuccessDialog from "../UI/success-dialog.vue";
-import UiFailureDialog from "../UI/failure-dialog.vue";
-import { nextTick } from "vue";
+// Dialogs are hidden until the user actually opens one (Add/Edit/Delete),
+// so there's no reason to ship and parse their code on the initial page
+// load - load them on demand instead.
+const UsersEdit = defineAsyncComponent(() => import("./UsersEdit.vue"));
+const UiConfirmationDialog = defineAsyncComponent(() =>
+  import("../UI/confirmation-dialog.vue")
+);
+const UiSuccessDialog = defineAsyncComponent(() =>
+  import("../UI/success-dialog.vue")
+);
+const UiFailureDialog = defineAsyncComponent(() =>
+  import("../UI/failure-dialog.vue")
+);
 
-export default {
-  components: {
-    UsersTable,
-    UsersEdit,
-    UiConfirmationDialog,
-    UiSuccessDialog,
-    UiFailureDialog,
-  },
-  data() {
-    return {
-      dialogs: {
-        confirmation: {
-          open: false,
-          title: "Delete User",
-          text: "Do you want to delete this user?",
-          buttonText: "Delete",
-          item: {},
-        },
-        edit: {
-          open: false,
-          edit: false,
-          item: {},
-        },
-        success: {
-          open: false,
-          title: "",
-          subtitle: "",
-        },
-        failure: {
-          open: false,
-          title: "",
-          subtitle: "",
-          errors: [],
-        },
-      },
-    };
-  },
-  methods: {
-    successDelete(userName) {
-      this.dialogs.success.title = "Delete Success";
-      this.dialogs.success.subtitle = `User ${userName} deleted successfully`;
-      this.dialogs.success.open = true;
-      if ("usersTable" in this.$refs) this.$refs.usersTable.loadItems();
-    },
-    successEdit() {
-      const action = this.dialogs.edit.edit ? "edited" : "added";
-      this.dialogs.success.title = "Success";
-      this.dialogs.success.subtitle = `User ${action} successfully`;
-      this.dialogs.success.open = true;
-      this.dialogs.edit.open = false;
-      this.dialogs.edit.edit = false;
-      this.dialogs.edit.item = {};
-      if ("usersTable" in this.$refs) this.$refs.usersTable.loadItems();
-    },
-    failure(errors) {
-      this.dialogs.failure.errors = errors;
-      this.dialogs.failure.title = "Something went wrong";
-      this.dialogs.failure.subtitle = "Creating user went wrong";
-      this.dialogs.failure.open = true;
-    },
-    openNewUser() {
-      this.dialogs.edit.open = true;
-      this.dialogs.edit.edit = false;
-    },
-    async openEdit(item) {
-      this.dialogs.edit.edit = true;
-      await nextTick();
-      this.dialogs.edit.item = item;
-      await nextTick();
-      this.dialogs.edit.open = true;
-    },
-    async openDelete(item) {
-      this.dialogs.confirmation.item = item;
-      await nextTick();
-      this.dialogs.confirmation.open = true;
-    },
-    async sendDeleteUser() {
-      const { id, name } = this.dialogs.confirmation.item;
-      try {
-        const fetchCall = await fetch(
-          `${import.meta.env.VITE_SERVICE_API}/users/${id}`,
-          {
-            method: "DELETE",
-            headers: {
-              Accept: "application/json",
-              "Content-type": "application/json",
-              Authorization: `Bearer ${import.meta.env.VITE_SERVICE_TOKEN}`,
-            },
-          }
-        );
+const usersStore = useUsersStore();
+const usersTableRef = ref(null);
 
-        switch (fetchCall.status) {
-          case 204:
-            this.successDelete(name);
-            this.dialogs.confirmation.item = {};
-            break;
-          default: {
-            let userDeleteData;
-            try {
-              userDeleteData = await fetchCall.json();
-            } catch (error) {
-              const errors = [
-                { message: "Returned delete data couldn't be parsed" },
-                { message: `Error: ${error}` },
-              ];
-              this.failure(errors);
-            }
-            const errors = [
-              { message: "Deleting user went wrong" },
-              { message: `Error Code: ${fetchCall.status}` },
-              { message: userDeleteData.error },
-            ];
-            this.failure(errors);
-            break;
-          }
-        }
-      } catch (error) {
-        const errors = [
-          { message: "Post call failed" },
-          { message: `Error: ${error}` },
-        ];
-        this.failure(errors);
-      }
-    },
+const dialogs = reactive({
+  confirmation: {
+    open: false,
+    title: "Delete User",
+    text: "Do you want to delete this user?",
+    buttonText: "Delete",
+    item: {},
   },
-};
+  edit: {
+    open: false,
+    edit: false,
+    item: {},
+  },
+  success: {
+    open: false,
+    title: "",
+    subtitle: "",
+  },
+  failure: {
+    open: false,
+    title: "",
+    subtitle: "",
+    errors: [],
+  },
+});
+
+function successDelete(userName) {
+  dialogs.success.title = "Delete Success";
+  dialogs.success.subtitle = `User ${userName} deleted successfully`;
+  dialogs.success.open = true;
+  usersTableRef.value?.loadItems();
+}
+
+function successEdit() {
+  const action = dialogs.edit.edit ? "edited" : "added";
+  dialogs.success.title = "Success";
+  dialogs.success.subtitle = `User ${action} successfully`;
+  dialogs.success.open = true;
+  dialogs.edit.open = false;
+  dialogs.edit.edit = false;
+  dialogs.edit.item = {};
+  usersTableRef.value?.loadItems();
+}
+
+function failure(errors) {
+  dialogs.failure.errors = errors;
+  dialogs.failure.title = "Something went wrong";
+  dialogs.failure.subtitle = "Creating user went wrong";
+  dialogs.failure.open = true;
+}
+
+function openNewUser() {
+  dialogs.edit.open = true;
+  dialogs.edit.edit = false;
+}
+
+async function openEdit(item) {
+  dialogs.edit.edit = true;
+  await nextTick();
+  dialogs.edit.item = item;
+  await nextTick();
+  dialogs.edit.open = true;
+}
+
+async function openDelete(item) {
+  dialogs.confirmation.item = item;
+  await nextTick();
+  dialogs.confirmation.open = true;
+}
+
+async function sendDeleteUser() {
+  const { id, name } = dialogs.confirmation.item;
+  try {
+    await usersStore.deleteUser(id);
+    successDelete(name);
+    dialogs.confirmation.item = {};
+  } catch (error) {
+    const errors = [
+      { message: "Deleting user went wrong" },
+      { message: `Error Code: ${error.response?.status}` },
+      { message: error.response?.data?.error },
+    ];
+    failure(errors);
+  }
+}
 </script>

@@ -13,65 +13,53 @@
   </v-card>
 </template>
 
-<script>
+<script setup>
 import DataTableServer from "../DataTable/DataTableServer.vue";
 
-export default {
-  name: "UiDataTable",
-  inheritAttrs: false,
-  components: { DataTableServer },
-  props: {
-    title: {
-      type: String,
-      default: "",
-    },
-    tableHeight: {
-      type: String,
-      default: "500px",
-    },
-    flat: {
-      type: Boolean,
-      default: false,
-    },
-    itemClass: {
-      type: Function,
-      default: () => {},
-    },
-    hideTitle: {
-      type: Boolean,
-      default: false,
-    },
-    showBorder: {
-      type: Boolean,
-      default: true,
-    },
-    isFirstColumnFixed: {
-      type: Boolean,
-      default: false,
-    },
-    hasActions: {
-      type: Boolean,
-      default: false,
-    },
-    loading: {
-      type: Boolean,
-      default: false,
-    },
-    headersLength: {
-      type: Number,
-      default: 6,
-    },
+defineOptions({ name: "UiDataTable", inheritAttrs: false });
+
+defineProps({
+  title: {
+    type: String,
+    default: "",
   },
-  computed: {
-    classes() {
-      return {
-        "ui-data-table": true,
-        "ui-data-table--fixed": this.isFirstColumnFixed,
-        "ui-data-table--actions": this.hasActions,
-      };
-    },
+  tableHeight: {
+    type: String,
+    default: "500px",
   },
-};
+  flat: {
+    type: Boolean,
+    default: false,
+  },
+  itemClass: {
+    type: Function,
+    default: () => {},
+  },
+  hideTitle: {
+    type: Boolean,
+    default: false,
+  },
+  showBorder: {
+    type: Boolean,
+    default: true,
+  },
+  isFirstColumnFixed: {
+    type: Boolean,
+    default: false,
+  },
+  hasActions: {
+    type: Boolean,
+    default: false,
+  },
+  loading: {
+    type: Boolean,
+    default: false,
+  },
+  headersLength: {
+    type: Number,
+    default: 6,
+  },
+});
 </script>
 
 <style lang="scss">
