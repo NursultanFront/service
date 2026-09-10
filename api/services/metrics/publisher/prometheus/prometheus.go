@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"sync"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ardanlabs/service/foundation/logger"

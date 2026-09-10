@@ -12,27 +12,32 @@ import (
 	"github.com/ardanlabs/service/business/sdk/sqldb"
 	"github.com/ardanlabs/service/foundation/logger"
 	"github.com/google/uuid"
-	"github.com/viccon/sturdyc"
+	"github.com/redis/go-redis/v9"
 )
 
 // Store manages the set of APIs for user data and caching.
+//
+// TODO(dev): the actual Redis read/write/invalidate logic used to live here
+// (via viccon/sturdyc, an in-process cache) and has been stripped out ahead
+// of the Redis migration - see the TODO markers below in Create/Update/
+// Delete/QueryByID/QueryByEmail. `cache` and `ttl` are wired up and ready to
+// use; `cache` may be nil (e.g. in tests), so guard against that.
 type Store struct {
 	log    *logger.Logger
 	storer userbus.Storer
-	cache  *sturdyc.Client[userbus.User]
+	cache  *redis.Client
+	ttl    time.Duration
 	inTran bool
 }
 
-// NewStore constructs the api for data and caching access.
-func NewStore(log *logger.Logger, storer userbus.Storer, ttl time.Duration) *Store {
-	const capacity = 10000
-	const numShards = 10
-	const evictionPercentage = 10
-
+// NewStore constructs the api for data and caching access. cache may be nil,
+// in which case this Store behaves as a plain passthrough with no caching.
+func NewStore(log *logger.Logger, storer userbus.Storer, cache *redis.Client, ttl time.Duration) *Store {
 	return &Store{
 		log:    log,
 		storer: storer,
-		cache:  sturdyc.New[userbus.User](capacity, numShards, ttl, evictionPercentage),
+		cache:  cache,
+		ttl:    ttl,
 	}
 }
 
@@ -48,6 +53,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (userbus.Storer, error) {
 		log:    s.log,
 		storer: txStorer,
 		cache:  s.cache,
+		ttl:    s.ttl,
 		inTran: true,
 	}
 
@@ -60,7 +66,7 @@ func (s *Store) Create(ctx context.Context, usr userbus.User) error {
 		return err
 	}
 
-	s.writeOrInvalidate(usr)
+	s.writeOrInvalidate(ctx, usr)
 
 	return nil
 }
@@ -71,7 +77,7 @@ func (s *Store) Update(ctx context.Context, usr userbus.User) error {
 		return err
 	}
 
-	s.writeOrInvalidate(usr)
+	s.writeOrInvalidate(ctx, usr)
 
 	return nil
 }
@@ -82,7 +88,7 @@ func (s *Store) Delete(ctx context.Context, usr userbus.User) error {
 		return err
 	}
 
-	s.deleteCache(usr)
+	s.deleteCache(ctx, usr)
 
 	return nil
 }
@@ -100,7 +106,7 @@ func (s *Store) Count(ctx context.Context, filter userbus.QueryFilter) (int, err
 // QueryByID gets the specified user from the database.
 func (s *Store) QueryByID(ctx context.Context, userID uuid.UUID) (userbus.User, error) {
 	if !s.inTran {
-		if cachedUsr, ok := s.readCache(userID.String()); ok {
+		if cachedUsr, ok := s.readCache(ctx, userID.String()); ok {
 			return cachedUsr, nil
 		}
 	}
@@ -110,7 +116,7 @@ func (s *Store) QueryByID(ctx context.Context, userID uuid.UUID) (userbus.User, 
 		return userbus.User{}, err
 	}
 
-	s.writeOrInvalidate(usr)
+	s.writeOrInvalidate(ctx, usr)
 
 	return usr, nil
 }
@@ -118,7 +124,7 @@ func (s *Store) QueryByID(ctx context.Context, userID uuid.UUID) (userbus.User, 
 // QueryByEmail gets the specified user from the database by email.
 func (s *Store) QueryByEmail(ctx context.Context, email mail.Address) (userbus.User, error) {
 	if !s.inTran {
-		if cachedUsr, ok := s.readCache(email.Address); ok {
+		if cachedUsr, ok := s.readCache(ctx, email.Address); ok {
 			return cachedUsr, nil
 		}
 	}
@@ -128,42 +134,45 @@ func (s *Store) QueryByEmail(ctx context.Context, email mail.Address) (userbus.U
 		return userbus.User{}, err
 	}
 
-	s.writeOrInvalidate(usr)
+	s.writeOrInvalidate(ctx, usr)
 
 	return usr, nil
 }
 
 // readCache performs a safe search in the cache for the specified key.
-func (s *Store) readCache(key string) (userbus.User, bool) {
-	usr, exists := s.cache.Get(key)
-	if !exists {
-		return userbus.User{}, false
-	}
-
-	return usr, true
+//
+// TODO(dev): implement using s.cache (a *redis.Client). Remember values need
+// to be serialized (redis stores bytes/strings, not Go structs) - e.g. with
+// encoding/json. Guard against s.cache == nil.
+func (s *Store) readCache(ctx context.Context, key string) (userbus.User, bool) {
+	return userbus.User{}, false
 }
 
 // writeOrInvalidate populates the cache outside a transaction, but only
 // invalidates the entry while inside one. A transactional write is not yet
 // committed and may be rolled back, which would leave the cache holding a row
 // that no longer exists in the database.
-func (s *Store) writeOrInvalidate(bus userbus.User) {
+func (s *Store) writeOrInvalidate(ctx context.Context, bus userbus.User) {
 	if s.inTran {
-		s.deleteCache(bus)
+		s.deleteCache(ctx, bus)
 		return
 	}
 
-	s.writeCache(bus)
+	s.writeCache(ctx, bus)
 }
 
 // writeCache performs a safe write to the cache for the specified userbus.
-func (s *Store) writeCache(bus userbus.User) {
-	s.cache.Set(bus.ID.String(), bus)
-	s.cache.Set(bus.Email.Address, bus)
+//
+// TODO(dev): implement using s.cache and s.ttl (redis SET with expiration -
+// see the redis package's SetEx/Set(...).WithTTL). Guard against s.cache ==
+// nil. The old sturdyc version keyed by both ID and email; consider whether
+// you want the same two keys, or a single key with the other as a lookup.
+func (s *Store) writeCache(ctx context.Context, bus userbus.User) {
 }
 
 // deleteCache performs a safe removal from the cache for the specified userbus.
-func (s *Store) deleteCache(bus userbus.User) {
-	s.cache.Delete(bus.ID.String())
-	s.cache.Delete(bus.Email.Address)
+//
+// TODO(dev): implement using s.cache (redis DEL). Guard against s.cache ==
+// nil.
+func (s *Store) deleteCache(ctx context.Context, bus userbus.User) {
 }

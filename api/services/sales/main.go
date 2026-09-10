@@ -38,6 +38,7 @@ import (
 	"github.com/ardanlabs/service/business/domain/vproductbus/extensions/vproductotel"
 	"github.com/ardanlabs/service/business/domain/vproductbus/stores/vproductdb"
 	"github.com/ardanlabs/service/business/sdk/delegate"
+	"github.com/ardanlabs/service/business/sdk/rediscache"
 	"github.com/ardanlabs/service/business/sdk/sqldb"
 	"github.com/ardanlabs/service/foundation/logger"
 	"github.com/ardanlabs/service/foundation/otel"
@@ -110,6 +111,11 @@ func run(ctx context.Context, log *logger.Logger) error {
 			MaxOpenConns int    `conf:"default:0"`
 			DisableTLS   bool   `conf:"default:true"`
 		}
+		Redis struct {
+			Host     string `conf:"default:redis:6379"`
+			Password string `conf:"mask"`
+			DB       int    `conf:"default:0"`
+		}
 		Tempo struct {
 			Host        string  `conf:"default:tempo:4317"`
 			ServiceName string  `conf:"default:sales"`
@@ -170,6 +176,22 @@ func run(ctx context.Context, log *logger.Logger) error {
 	defer db.Close()
 
 	// -------------------------------------------------------------------------
+	// Redis Support
+
+	log.Info(ctx, "startup", "status", "initializing redis support", "host", cfg.Redis.Host)
+
+	redisClient, err := rediscache.Open(rediscache.Config{
+		Host:     cfg.Redis.Host,
+		Password: cfg.Redis.Password,
+		DB:       cfg.Redis.DB,
+	})
+	if err != nil {
+		return fmt.Errorf("connecting to redis: %w", err)
+	}
+
+	defer redisClient.Close()
+
+	// -------------------------------------------------------------------------
 	// Create Business Packages
 
 	delegate := delegate.New(log)
@@ -180,7 +202,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 
 	userOtelExt := userotel.NewExtension()
 	userAuditExt := useraudit.NewExtension(auditBus)
-	userStorage := usercache.NewStore(log, userdb.NewStore(log, db), time.Minute)
+	userStorage := usercache.NewStore(log, userdb.NewStore(log, db), redisClient, time.Minute)
 	userBus := userbus.NewBusiness(log, delegate, userStorage, userOtelExt, userAuditExt)
 
 	productOtelExt := productotel.NewExtension()

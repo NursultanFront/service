@@ -44,7 +44,7 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 
 	userOtelExt := userotel.NewExtension()
 	userAuditExt := useraudit.NewExtension(auditBus)
-	userStorage := usercache.NewStore(log, userdb.NewStore(log, db), time.Hour)
+	userStorage := usercache.NewStore(log, userdb.NewStore(log, db), nil, time.Hour)
 	userBus := userbus.NewBusiness(log, delegate, userStorage, userOtelExt, userAuditExt)
 
 	productOtelExt := productotel.NewExtension()
