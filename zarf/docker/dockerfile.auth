@@ -3,6 +3,14 @@ FROM golang:1.27 AS build_auth
 ENV CGO_ENABLED=0
 ARG BUILD_TAG
 
+# Create the service directory and copy the module files first and then
+# download the dependencies. If this doesn't change, we won't need to do this
+# again in future builds.
+RUN mkdir /service
+COPY go.* /service/
+WORKDIR /service
+RUN go mod download
+
 # Copy the source code into the container.
 COPY . /service
 

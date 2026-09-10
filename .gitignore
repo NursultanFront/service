@@ -29,6 +29,7 @@ api/cmd/frontends/admin/.env
 _obj
 _test
 zarf/build/
+vendor/
 
 # Editor files
 .idea/
