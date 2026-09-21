@@ -10,9 +10,12 @@ package notificationbus
 
 import (
 	"context"
+	"fmt"
 	"slices"
+	"time"
 
 	"github.com/ardanlabs/service/foundation/logger"
+	"github.com/google/uuid"
 )
 
 // Storer interface declares the behavior this package needs to persist and
@@ -70,7 +73,19 @@ func NewBusiness(log *logger.Logger, storer Storer, extensions ...Extension) Ext
 //     оно оставляет исходную ошибку доступной через errors.Is/errors.As.
 //  3. При успехе верни n, nil.
 func (b *Business) Create(ctx context.Context, nn NewNotification) (Notification, error) {
-	return Notification{}, nil
+	n := Notification{
+		ID:        uuid.New(),
+		ProductID: nn.ProductID,
+		EventType: nn.EventType,
+		Message:   nn.Message,
+		CreatedAt: time.Now(),
+	}
+
+	if err := b.storer.Create(ctx, n); err != nil {
+		return Notification{}, fmt.Errorf("create notification: %w", err)
+	}
+
+	return n, nil
 }
 
 // Query retrieves the list of existing notifications.
@@ -87,5 +102,10 @@ func (b *Business) Create(ctx context.Context, nn NewNotification) (Notification
 // уведомлений, скорее всего, небольшие — но полезно знать, что такой
 // паттерн в проекте есть, если фича вырастет.
 func (b *Business) Query(ctx context.Context) ([]Notification, error) {
-	return nil, nil
+	ns, err := b.storer.Query(ctx)
+
+	if err != nil {
+		return nil, fmt.Errorf("query notifications: %w", err)
+	}
+	return ns, nil
 }

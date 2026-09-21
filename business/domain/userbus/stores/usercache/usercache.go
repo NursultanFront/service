@@ -3,6 +3,8 @@ package usercache
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/mail"
 	"time"
 
@@ -10,6 +12,8 @@ import (
 	"github.com/ardanlabs/service/business/sdk/order"
 	"github.com/ardanlabs/service/business/sdk/page"
 	"github.com/ardanlabs/service/business/sdk/sqldb"
+	"github.com/ardanlabs/service/business/types/name"
+	"github.com/ardanlabs/service/business/types/role"
 	"github.com/ardanlabs/service/foundation/logger"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -141,11 +145,94 @@ func (s *Store) QueryByEmail(ctx context.Context, email mail.Address) (userbus.U
 
 // readCache performs a safe search in the cache for the specified key.
 //
-// TODO(dev): implement using s.cache (a *redis.Client). Remember values need
-// to be serialized (redis stores bytes/strings, not Go structs) - e.g. with
-// encoding/json. Guard against s.cache == nil.
+// TODO(dev): реализовать через s.cache (это *redis.Client).
+//  1. Guard: если s.cache == nil - сразу return userbus.User{}, false.
+//  2. Сюда приходит либо id, либо email (смотри два места вызова ниже -
+//     QueryByID и QueryByEmail). Поиск должен уметь найти запись в обоих
+//     случаях - конкретный способ зависит от того, как вы решите ключевать
+//     данные в writeCache (TODO 4 там).
+//  3. Чтение: s.cache.Get(ctx, key) возвращает *redis.StringCmd, из него
+//     достать байты через .Bytes() или .Result(). Если ключа нет, вернётся
+//     специальная ошибка redis.Nil; для этой задачи разницу между "ключа
+//     нет" и любой другой ошибкой можно не делать - в обоих случаях просто
+//     return false (вызывающий код сходит в базу сам).
+//  4. json.Unmarshal байтов в промежуточную структуру (см. TODO 2 в
+//     writeCache ниже - почему нельзя размаршалить прямо в userbus.User).
+//  5. Превратить промежуточную структуру обратно в userbus.User через
+//     функции-парсеры пакетов (name.Parse, role.ParseMany и т.д. - так же,
+//     как это делает toBusUser в ../userdb/model.go), т.к. эти типы
+//     валидируются при создании, а не просто присваиваются.
+//  6. Вернуть (usr, true) только если все шаги выше прошли без ошибок,
+//     иначе (userbus.User{}, false).
+//
+// NOTE(AI): тело этой функции и toBusUserFromCache ниже написаны Claude
+// (AI-ассистентом) по прямой просьбе разработчика, как разовое исключение
+// из режима "AI только ревьюит" (см. AGENTS.md) - не итог самостоятельной
+// работы разработчика, учитывайте при ревью.
 func (s *Store) readCache(ctx context.Context, key string) (userbus.User, bool) {
-	return userbus.User{}, false
+	if s.cache == nil {
+		return userbus.User{}, false
+	}
+
+	data, err := s.cache.Get(ctx, key).Bytes()
+	if err != nil {
+		return userbus.User{}, false
+	}
+
+	var cu cacheUser
+	if err := json.Unmarshal(data, &cu); err != nil {
+		s.log.Error(ctx, "usercache: unmarshal", "ERROR", err)
+		return userbus.User{}, false
+	}
+
+	usr, err := toBusUserFromCache(cu)
+	if err != nil {
+		s.log.Error(ctx, "usercache: convert", "ERROR", err)
+		return userbus.User{}, false
+	}
+
+	return usr, true
+}
+
+// toBusUserFromCache converts the JSON-safe cacheUser shape back into a
+// userbus.User, re-validating each primitive field through its type's
+// parser rather than assigning it directly.
+//
+// NOTE(AI): написано Claude, см. пометку над readCache выше.
+func toBusUserFromCache(cu cacheUser) (userbus.User, error) {
+	id, err := uuid.Parse(cu.ID)
+	if err != nil {
+		return userbus.User{}, fmt.Errorf("parse id: %w", err)
+	}
+
+	nme, err := name.Parse(cu.Name)
+	if err != nil {
+		return userbus.User{}, fmt.Errorf("parse name: %w", err)
+	}
+
+	roles, err := role.ParseMany(cu.Roles)
+	if err != nil {
+		return userbus.User{}, fmt.Errorf("parse roles: %w", err)
+	}
+
+	department, err := name.ParseNull(cu.Department)
+	if err != nil {
+		return userbus.User{}, fmt.Errorf("parse department: %w", err)
+	}
+
+	usr := userbus.User{
+		ID:           id,
+		Name:         nme,
+		Email:        mail.Address{Address: cu.Email},
+		Roles:        roles,
+		PasswordHash: cu.PasswordHash,
+		Department:   department,
+		Enabled:      cu.Enabled,
+		DateCreated:  cu.DateCreated,
+		DateUpdated:  cu.DateUpdated,
+	}
+
+	return usr, nil
 }
 
 // writeOrInvalidate populates the cache outside a transaction, but only
@@ -163,16 +250,105 @@ func (s *Store) writeOrInvalidate(ctx context.Context, bus userbus.User) {
 
 // writeCache performs a safe write to the cache for the specified userbus.
 //
-// TODO(dev): implement using s.cache and s.ttl (redis SET with expiration -
-// see the redis package's SetEx/Set(...).WithTTL). Guard against s.cache ==
-// nil. The old sturdyc version keyed by both ID and email; consider whether
-// you want the same two keys, or a single key with the other as a lookup.
+// TODO(dev): реализовать через s.cache и s.ttl (redis SET с истечением -
+// смотри Set(ctx, key, value, ttl) у клиента).
+//  1. Guard: если s.cache == nil - сразу return.
+//  2. userbus.User нельзя просто взять и сериализовать/десериализовать
+//     напрямую: поля вроде bus.Name (тип name.Name) и элементы bus.Roles
+//     (тип role.Role) хранят значение в приватном поле - у них есть
+//     MarshalText (поэтому Marshal формально сработает), но нет
+//     UnmarshalText, так что Unmarshal тихо оставит эти поля нулевыми, без
+//     ошибки. Заведите отдельную небольшую структуру только с примитивами
+//     (string, []string, bool, time.Time) и переложите туда поля bus через
+//     .String() (для email - через .Address) - по образцу toDBUser в
+//     ../userdb/model.go.
+//  3. json.Marshal этой промежуточной структуры - получите байты для записи.
+//  4. Определитесь со схемой ключей: QueryByID и QueryByEmail ниже ищут
+//     одного и того же юзера, но по разным значениям. Варианты: хранить
+//     полную запись под двумя ключами (по id и по email), либо хранить один
+//     раз и добавить второй маленький ключ-"указатель", который содержит
+//     только id (readCache потом по нему находит основную запись). Любой
+//     вариант годится - главное, чтобы readCache знал, как их читать.
+//  5. Запись: s.cache.Set(ctx, key, data, s.ttl).Err() - проверьте ошибку
+//     (возвращать её некуда, метод void, поэтому залогируйте через
+//     s.log.Error(ctx, "...", "ERROR", err), не игнорируйте молча).
+//
+// NOTE(AI): тело этой функции и toCacheUser/cacheUser ниже написаны Claude
+// по прямой просьбе разработчика, разовое исключение из AGENTS.md.
 func (s *Store) writeCache(ctx context.Context, bus userbus.User) {
+	if s.cache == nil {
+		return
+	}
+
+	data, err := json.Marshal(toCacheUser(bus))
+	if err != nil {
+		s.log.Error(ctx, "usercache: marshal", "ERROR", err)
+		return
+	}
+
+	if err := s.cache.Set(ctx, bus.ID.String(), data, s.ttl).Err(); err != nil {
+		s.log.Error(ctx, "usercache: write", "ERROR", err)
+	}
+}
+
+// toCacheUser converts a userbus.User into the JSON-safe cacheUser shape,
+// pulling each strong-typed field down to its primitive value.
+//
+// NOTE(AI): написано Claude, см. пометку над writeCache выше.
+func toCacheUser(bus userbus.User) cacheUser {
+	roles := make([]string, len(bus.Roles))
+	for i, r := range bus.Roles {
+		roles[i] = r.String()
+	}
+
+	return cacheUser{
+		ID:           bus.ID.String(),
+		Name:         bus.Name.String(),
+		Email:        bus.Email.Address,
+		Roles:        roles,
+		PasswordHash: bus.PasswordHash,
+		Department:   bus.Department.String(),
+		Enabled:      bus.Enabled,
+		DateCreated:  bus.DateCreated,
+		DateUpdated:  bus.DateUpdated,
+	}
+}
+
+// cacheUser is the JSON-safe shape stored in Redis. Unlike userbus.User, every
+// field here is a plain primitive - name.Name and role.Role only implement
+// MarshalText (for logging), not UnmarshalText, so json.Unmarshal straight
+// into userbus.User would silently leave those fields zeroed instead of
+// erroring.
+//
+// NOTE(AI): написано Claude, см. пометку над writeCache выше.
+type cacheUser struct {
+	ID           string    `json:"id"`
+	Name         string    `json:"name"`
+	Email        string    `json:"email"`
+	Roles        []string  `json:"roles"`
+	PasswordHash []byte    `json:"password_hash"`
+	Department   string    `json:"department"`
+	Enabled      bool      `json:"enabled"`
+	DateCreated  time.Time `json:"date_created"`
+	DateUpdated  time.Time `json:"date_updated"`
 }
 
 // deleteCache performs a safe removal from the cache for the specified userbus.
 //
-// TODO(dev): implement using s.cache (redis DEL). Guard against s.cache ==
-// nil.
+// TODO(dev): реализовать через s.cache (redis DEL).
+//  1. Guard: если s.cache == nil - сразу return.
+//  2. s.cache.Del(ctx, keys...) принимает сразу несколько ключей одним
+//     вызовом (variadic) - удалите все ключи, которые создавали для этого
+//     юзера в writeCache (и ключ по id, и ключ-указатель по email, если он
+//     у вас есть), одним вызовом Del, а не двумя отдельными.
+//  3. Проверьте .Err() и залогируйте через s.log.Error, как в writeCache -
+//     возвращать ошибку из этого void-метода тоже некуда.
 func (s *Store) deleteCache(ctx context.Context, bus userbus.User) {
+	if s.cache == nil {
+		return
+	}
+
+	if err := s.cache.Del(ctx, bus.ID.String()).Err(); err != nil {
+		s.log.Error(ctx, "usercache: delete", "ERROR", err)
+	}
 }

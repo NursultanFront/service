@@ -1,9 +1,11 @@
-// Package notificationmem is a placeholder Storer for notificationbus.
+// Package notificationmem - это in-memory реализация Storer для
+// notificationbus.
 //
-// TODO(dev): это заглушка — Create/Query сейчас ничего не делают. Нужно
-// либо реализовать здесь реальное in-memory хранилище (слайс/мапа под
-// мьютексом), либо заменить весь пакет на настоящее хранилище (Postgres,
-// Redis) по образцу пакетов *db/*cache в остальном проекте.
+// Данные хранятся в срезе внутри процесса - при перезапуске теряются, между
+// несколькими инстансами сервиса не шарятся. Для текущего этапа этого
+// достаточно; когда уведомлениям понадобится переживать рестарт или быть
+// доступными сразу нескольким инстансам - заменить на настоящее хранилище
+// (Postgres, Redis) по образцу пакетов *db/*cache в остальном проекте.
 package notificationmem
 
 import (
@@ -13,26 +15,20 @@ import (
 	"github.com/ardanlabs/service/business/domain/notificationbus"
 )
 
-// Store is a placeholder in-memory store for notifications.
+// Store - это in-memory хранилище уведомлений.
 //
-// TODO(dev): добавь сюда два поля:
-//  1. mu sync.Mutex (или sync.RWMutex, раз Query только читает) — защищает
-//     слайс ниже. Без него параллельные запросы, читающие/пишущие
-//     одновременно, словят race condition (go run/test с флагом -race это
-//     поймает, если забудешь).
-//  2. items []notificationbus.Notification — само хранилище. Обычного
-//     слайса достаточно для заглушки; мапа по ключу n.ID позволила бы
-//     потом легко добавить QueryByID без перебора всего слайса.
-type Store struct{
+// mu (RWMutex, раз Query только читает) защищает items от одновременного
+// чтения/записи из разных горутин - без него параллельные запросы словили
+// бы race condition (go run/test с флагом -race это поймает). items - сам
+// список уведомлений; обычного среза достаточно для текущих нужд, но мапа
+// по ключу n.ID позволила бы в будущем легко добавить QueryByID без
+// перебора всего среза.
+type Store struct {
 	mu    sync.RWMutex
 	items []notificationbus.Notification
 }
 
-// NewStore constructs the placeholder store.
-//
-// TODO(dev): когда добавишь поле items выше — инициализируй его здесь,
-// например items: make([]notificationbus.Notification, 0). Строго не
-// обязательно (append прекрасно работает и с nil-слайсом), но так яснее.
+// NewStore constructs the in-memory store.
 func NewStore() *Store {
 	return &Store{items: make([]notificationbus.Notification, 0)}
 }
