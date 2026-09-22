@@ -8,6 +8,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -27,9 +28,16 @@ import (
 	"github.com/ardanlabs/service/foundation/logger"
 	"github.com/ardanlabs/service/foundation/otel"
 	"github.com/ardanlabs/service/foundation/web"
+	"github.com/google/uuid"
 )
 
 var tag = "develop"
+
+type productEvent struct {
+	ProductID uuid.UUID `json:"product_id"`
+	EventType string    `json:"event_type"`
+	Message   string    `json:"message"`
+}
 
 func main() {
 	var log *logger.Logger
@@ -152,6 +160,34 @@ func run(ctx context.Context, log *logger.Logger) error {
 
 	// -------------------------------------------------------------------------
 	// Start API Service
+
+	// NOTE(AI): тело этой горутины написано Claude по прямой просьбе
+	// разработчика, разовое исключение из AGENTS.md - учитывайте при ревью.
+	go func() {
+		for {
+			msg, err := reader.ReadMessage(ctx)
+			if err != nil {
+				log.Error(ctx, "read", "err", err)
+				return
+			}
+
+			var event productEvent
+			if err := json.Unmarshal(msg.Value, &event); err != nil {
+				log.Error(ctx, "unmarshal", "err", err)
+				continue
+			}
+
+			nn := notificationbus.NewNotification{
+				ProductID: event.ProductID,
+				EventType: event.EventType,
+				Message:   event.Message,
+			}
+
+			if _, err := notificationBus.Create(ctx, nn); err != nil {
+				log.Error(ctx, "create notification", "err", err)
+			}
+		}
+	}()
 
 	log.Info(ctx, "startup", "status", "initializing V1 API support")
 
