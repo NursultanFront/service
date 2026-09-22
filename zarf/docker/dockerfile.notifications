@@ -1,0 +1,38 @@
+# Build the Go Binary.
+FROM golang:1.27 AS build_notifications
+ENV CGO_ENABLED=0
+ARG BUILD_TAG
+
+# Create the service directory and copy the module files first and then
+# download the dependencies. If this doesn't change, we won't need to do this
+# again in future builds.
+RUN mkdir /service
+COPY go.* /service/
+WORKDIR /service
+RUN go mod download
+
+# Copy the source code into the container.
+COPY . /service
+
+# Build the service binary. We are doing this last since this will be different
+# every time we run through this process.
+WORKDIR /service/api/services/notifications
+RUN go build -ldflags "-X main.tag=${BUILD_TAG}"
+
+
+# Run the Go Binary in Alpine.
+FROM alpine:3.24
+ARG BUILD_DATE
+ARG BUILD_TAG
+RUN addgroup -g 1000 -S notifications && \
+    adduser -u 1000 -h /service -G notifications -S notifications
+COPY --from=build_notifications --chown=notifications:notifications /service/api/services/notifications/notifications /service/notifications
+WORKDIR /service
+USER notifications
+CMD ["./notifications"]
+
+LABEL org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.title="notifications" \
+      org.opencontainers.image.source="https://github.com/ardanlabs/service/tree/master/api/services/notifications" \
+      org.opencontainers.image.revision="${BUILD_TAG}" \
+      org.opencontainers.image.vendor="Ardan Labs"
