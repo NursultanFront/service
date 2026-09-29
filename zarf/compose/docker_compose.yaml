@@ -70,6 +70,38 @@ services:
       sales-system-network:
         ipv4_address: 10.5.0.4
 
+  # NOTE(AI): added by Claude by direct request - ensures the "products"
+  # topic exists before sales (producer) or notifications (consumer) start,
+  # instead of relying on Kafka's auto-create-on-first-write behavior, which
+  # can leave a consumer that joined the group before the topic existed
+  # stuck with zero assigned partitions until it's manually restarted.
+  init-kafka-topics:
+    image: apache/kafka:3.9.0
+    container_name: init-kafka-topics
+    entrypoint:
+      [
+        "/opt/kafka/bin/kafka-topics.sh",
+        "--bootstrap-server",
+        "kafka:19092",
+        "--create",
+        "--if-not-exists",
+        "--topic",
+        "products",
+        "--partitions",
+        "1",
+        "--replication-factor",
+        "1",
+      ]
+    networks:
+      sales-system-network:
+        ipv4_address: 10.5.0.11
+    deploy:
+      restart_policy:
+        condition: none
+    depends_on:
+      kafka:
+        condition: service_healthy
+
   init-migrate-seed:
     image: localhost/ardanlabs/sales:0.0.1
     pull_policy: never
@@ -158,8 +190,12 @@ services:
       sales-system-network:
         ipv4_address: 10.5.0.15
     depends_on:
-      - init-migrate-seed
-      - redis
+      init-migrate-seed:
+        condition: service_completed_successfully
+      init-kafka-topics:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
 
   metrics:
     image: localhost/ardanlabs/metrics:0.0.1
