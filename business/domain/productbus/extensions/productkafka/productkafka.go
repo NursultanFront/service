@@ -10,11 +10,14 @@ package productkafka
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	"github.com/ardanlabs/service/business/domain/productbus"
 	"github.com/ardanlabs/service/business/sdk/order"
 	"github.com/ardanlabs/service/business/sdk/page"
 	"github.com/ardanlabs/service/business/sdk/sqldb"
+	"github.com/ardanlabs/service/foundation/logger"
 	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
 )
@@ -22,16 +25,28 @@ import (
 // Extension provides a wrapper that publishes product change events to
 // Kafka around the productbus.
 type Extension struct {
+	log    *logger.Logger
 	bus    productbus.ExtBusiness
 	writer *kafka.Writer
+}
+
+type productEvent struct {
+	ProductID uuid.UUID `json:"product_id"`
+	EventType string    `json:"event_type"`
+	Message   string    `json:"message"`
 }
 
 // NewExtension constructs a new extension that wraps the productbus with a
 // Kafka producer. writer is expected to already be configured for the
 // target topic (see kafkaclient.NewWriter).
-func NewExtension(writer *kafka.Writer) productbus.Extension {
+//
+// NOTE(AI): log field/param added by Claude by direct request, one-off
+// exception per AGENTS.md - so publish failures can be logged without
+// failing the (already-committed) Create/Update/Delete call.
+func NewExtension(log *logger.Logger, writer *kafka.Writer) productbus.Extension {
 	return func(bus productbus.ExtBusiness) productbus.ExtBusiness {
 		return &Extension{
+			log:    log,
 			bus:    bus,
 			writer: writer,
 		}
@@ -46,12 +61,29 @@ func (ext *Extension) NewWithTx(tx sqldb.CommitRollbacker) (productbus.ExtBusine
 
 // Create publishes a product-created event after a successful create.
 //
-// TODO(dev): marshal prd to JSON (or your chosen event shape) and write it
-// with ext.writer.WriteMessages(ctx, kafka.Message{...}).
+// NOTE(AI): разработчик написал структуру события и вызовы Marshal/
+// WriteMessages сам; Claude по прямой просьбе поправил недостающий импорт
+// encoding/json, значения EventType/Message и имя переменной (совпадало с
+// именем типа productEvent) - разовое исключение из AGENTS.md.
 func (ext *Extension) Create(ctx context.Context, np productbus.NewProduct) (productbus.Product, error) {
 	prd, err := ext.bus.Create(ctx, np)
 	if err != nil {
 		return productbus.Product{}, err
+	}
+
+	event := productEvent{
+		ProductID: prd.ID,
+		EventType: "product.created",
+		Message:   fmt.Sprintf("product %s created", prd.Name.String()),
+	}
+
+	data, err := json.Marshal(event)
+	if err != nil {
+		return productbus.Product{}, err
+	}
+
+	if err := ext.writer.WriteMessages(ctx, kafka.Message{Value: data}); err != nil {
+		ext.log.Error(ctx, "productkafka: write", "ERROR", err)
 	}
 
 	return prd, nil
@@ -66,6 +98,21 @@ func (ext *Extension) Update(ctx context.Context, prd productbus.Product, up pro
 		return productbus.Product{}, err
 	}
 
+	event := productEvent{
+		ProductID: updated.ID,
+		EventType: "product.updated",
+		Message:   fmt.Sprintf("product %s updated", updated.Name.String()),
+	}
+
+	data, err := json.Marshal(event)
+	if err != nil {
+		return productbus.Product{}, err
+	}
+
+	if err := ext.writer.WriteMessages(ctx, kafka.Message{Value: data}); err != nil {
+		ext.log.Error(ctx, "productkafka: write", "ERROR", err)
+	}
+
 	return updated, nil
 }
 
@@ -75,6 +122,22 @@ func (ext *Extension) Update(ctx context.Context, prd productbus.Product, up pro
 func (ext *Extension) Delete(ctx context.Context, prd productbus.Product) error {
 	if err := ext.bus.Delete(ctx, prd); err != nil {
 		return err
+	}
+
+	event := productEvent{
+		ProductID: prd.ID,
+		EventType: "product.deleted",
+		Message:   fmt.Sprintf("product %s deleted", prd.Name.String()),
+	}
+
+	data, err := json.Marshal(event)
+	
+	if err != nil {
+		return err
+	}
+
+	if err := ext.writer.WriteMessages(ctx, kafka.Message{Value: data}); err != nil {
+		ext.log.Error(ctx, "productkafka: write", "ERROR", err)
 	}
 
 	return nil
