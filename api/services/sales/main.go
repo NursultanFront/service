@@ -27,6 +27,7 @@ import (
 	"github.com/ardanlabs/service/business/domain/homebus/extensions/homeotel"
 	"github.com/ardanlabs/service/business/domain/homebus/stores/homedb"
 	"github.com/ardanlabs/service/business/domain/productbus"
+	"github.com/ardanlabs/service/business/domain/productbus/extensions/productkafka"
 	"github.com/ardanlabs/service/business/domain/productbus/extensions/productotel"
 	"github.com/ardanlabs/service/business/domain/productbus/stores/productpg"
 	"github.com/ardanlabs/service/business/domain/userbus"
@@ -38,6 +39,7 @@ import (
 	"github.com/ardanlabs/service/business/domain/vproductbus/extensions/vproductotel"
 	"github.com/ardanlabs/service/business/domain/vproductbus/stores/vproductdb"
 	"github.com/ardanlabs/service/business/sdk/delegate"
+	"github.com/ardanlabs/service/business/sdk/kafkaclient"
 	"github.com/ardanlabs/service/business/sdk/rediscache"
 	"github.com/ardanlabs/service/business/sdk/sqldb"
 	"github.com/ardanlabs/service/foundation/logger"
@@ -116,6 +118,10 @@ func run(ctx context.Context, log *logger.Logger) error {
 			Password string `conf:"mask"`
 			DB       int    `conf:"default:0"`
 		}
+		Kafka struct {
+			Brokers []string `conf:"default:kafka:19092"`
+			Topic   string   `conf:"default:products"`
+		}
 		Tempo struct {
 			Host        string  `conf:"default:tempo:4317"`
 			ServiceName string  `conf:"default:sales"`
@@ -192,6 +198,18 @@ func run(ctx context.Context, log *logger.Logger) error {
 	defer redisClient.Close()
 
 	// -------------------------------------------------------------------------
+	// Kafka Support
+	//
+	// NOTE(AI): this wiring block (writer construction + passing the
+	// extension into NewBusiness) was written by Claude by direct request,
+	// one-off exception per AGENTS.md.
+
+	log.Info(ctx, "startup", "status", "initializing kafka support", "brokers", cfg.Kafka.Brokers)
+
+	productWriter := kafkaclient.NewWriter(kafkaclient.Config{Brokers: cfg.Kafka.Brokers}, cfg.Kafka.Topic)
+	defer productWriter.Close()
+
+	// -------------------------------------------------------------------------
 	// Create Business Packages
 
 	delegate := delegate.New(log)
@@ -206,8 +224,9 @@ func run(ctx context.Context, log *logger.Logger) error {
 	userBus := userbus.NewBusiness(log, delegate, userStorage, userOtelExt, userAuditExt)
 
 	productOtelExt := productotel.NewExtension()
+	productKafkaExt := productkafka.NewExtension(log, productWriter)
 	productStorage := productpg.NewStore(log, db)
-	productBus := productbus.NewBusiness(log, userBus, delegate, productStorage, productOtelExt)
+	productBus := productbus.NewBusiness(log, userBus, delegate, productStorage, productOtelExt, productKafkaExt)
 
 	homeOtelExt := homeotel.NewExtension()
 	homeStorage := homedb.NewStore(log, db)

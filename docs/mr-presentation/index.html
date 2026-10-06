@@ -1,0 +1,536 @@
+<title>Пайплайн уведомлений</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#eef1f6; --surface:#ffffff; --surface-2:#e4e9f1;
+  --fg:#101826; --muted:#55607a; --border:#c7cedb;
+  --accent:#0e7c86; --accent-2:#a8650f; --danger:#b3261e; --success:#1e7d46;
+  --code-bg:#0f172a; --code-fg:#d6e2f0; --code-muted:#7c8db3;
+  --font-display:"IBM Plex Mono",ui-monospace,"SF Mono",Consolas,monospace;
+  --font-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,"SF Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0b1220; --surface:#121b2e; --surface-2:#16223a;
+    --fg:#dfe6f0; --muted:#8291ab; --border:#253352;
+    --accent:#5fd3df; --accent-2:#f0a659; --danger:#ef6a5f; --success:#5fd38a;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0b1220; --surface:#121b2e; --surface-2:#16223a;
+  --fg:#dfe6f0; --muted:#8291ab; --border:#253352;
+  --accent:#5fd3df; --accent-2:#f0a659; --danger:#ef6a5f; --success:#5fd38a;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  background:var(--bg); color:var(--fg); font-family:var(--font-body);
+  margin:0; padding-inline:16px; padding-block:0 32px;
+  line-height:1.55;
+}
+h1,h2,h3{font-family:var(--font-display); text-wrap:balance; margin:0 0 .4em; font-weight:600}
+a{color:var(--accent)}
+code,.mono{font-family:var(--font-mono)}
+.wrap{max-width:840px; margin:0 auto}
+.topbar{
+  position:sticky; top:env(safe-area-inset-top,0px); z-index:10;
+  background:var(--bg); border-bottom:1px solid var(--border);
+  padding-top:calc(14px + env(safe-area-inset-top,0px));
+}
+.topbar .wrap{padding-bottom:0}
+.eyebrow{
+  font-family:var(--font-mono); font-size:12px; letter-spacing:.05em;
+  color:var(--muted); text-transform:uppercase; display:flex; gap:8px; align-items:center;
+  flex-wrap:wrap;
+}
+.eyebrow .branch{color:var(--accent); text-transform:none}
+h1.title{font-size:clamp(20px,4.5vw,28px); margin:4px 0 12px}
+.tabs{
+  display:flex; gap:2px; overflow-x:auto; padding-bottom:12px;
+  -webkit-overflow-scrolling:touch;
+}
+.tabs button{
+  font-family:var(--font-mono); font-size:13px; font-weight:500;
+  background:none; border:1px solid transparent; color:var(--muted);
+  padding:8px 14px; border-radius:6px 6px 0 0; cursor:pointer; white-space:nowrap;
+}
+.tabs button:hover{color:var(--fg)}
+.tabs button[aria-selected="true"]{
+  color:var(--accent); border-color:var(--border); border-bottom-color:var(--surface);
+  background:var(--surface);
+}
+.ai-switch{
+  display:flex; align-items:center; gap:8px; font-family:var(--font-mono);
+  font-size:12px; color:var(--muted); padding:6px 0 12px;
+}
+.ai-switch input{accent-color:var(--accent-2); width:32px; height:18px; flex-shrink:0}
+.eyebrow-row{display:flex; align-items:flex-end; gap:12px}
+.stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin:20px 0 28px}
+.stat{background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:14px 16px}
+.stat .n{font-family:var(--font-mono); font-size:26px; font-weight:600; font-variant-numeric:tabular-nums}
+.stat .l{font-size:12px; color:var(--muted); margin-top:2px}
+.pane{display:none; padding-top:24px}
+.pane[data-active]{display:block}
+p{max-width:66ch}
+.lede{font-size:17px; color:var(--fg)}
+.section-title{font-size:13px; font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin:36px 0 10px; display:flex; align-items:center; gap:8px}
+.section-title::after{content:""; flex:1; height:1px; background:var(--border)}
+figure{margin:0 0 8px}
+.diagram-box{background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:18px 12px; overflow-x:auto}
+.diagram-box svg{display:block; margin:0 auto; max-width:100%; height:auto}
+figcaption{font-size:13px; color:var(--muted); margin-top:8px; max-width:60ch}
+.node-btn{cursor:pointer}
+.node-btn:hover rect{stroke:var(--accent); stroke-width:2}
+.ai-node rect{stroke-dasharray:3 3}
+.ai-chip{display:none; font-family:var(--font-mono); font-size:9px; fill:var(--bg)}
+.show-ai .ai-chip{display:inline}
+.show-ai .ai-chip-bg{display:inline}
+.ai-chip-bg{display:none}
+.snippet-slot{margin-top:10px}
+.snippet-slot:empty{display:none}
+pre.code{background:var(--code-bg); color:var(--code-fg); border-radius:8px; padding:14px 16px; overflow-x:auto; font-family:var(--font-mono); font-size:12.5px; line-height:1.6; margin:0}
+pre.code .c{color:var(--code-muted)}
+pre.code .k{color:#f0a659}
+.code-card{border:1px solid var(--border); border-radius:8px; overflow:hidden}
+.code-head{display:flex; justify-content:space-between; align-items:center; gap:10px; background:var(--surface-2); padding:8px 12px; font-family:var(--font-mono); font-size:11.5px; color:var(--muted)}
+.copy-btn{font-family:var(--font-mono); font-size:11px; background:none; border:1px solid var(--border); color:var(--muted); border-radius:5px; padding:3px 8px; cursor:pointer}
+.copy-btn:hover{color:var(--fg); border-color:var(--fg)}
+.file-row{display:flex; gap:12px; align-items:baseline; padding:10px 0; border-bottom:1px solid var(--border); flex-wrap:wrap}
+.file-row:last-child{border-bottom:none}
+.file-path{font-family:var(--font-mono); font-size:12.5px}
+.tag{font-family:var(--font-mono); font-size:10px; letter-spacing:.02em; text-transform:uppercase; padding:2px 6px; border-radius:4px; border:1px solid var(--border); color:var(--muted)}
+.tag.ai{display:none; color:var(--accent-2); border-color:var(--accent-2)}
+.show-ai .tag.ai{display:inline}
+.file-desc{color:var(--muted); font-size:13px; flex-basis:100%}
+.timeline{border-left:2px solid var(--border); margin-left:6px; padding-left:20px}
+.commit{position:relative; padding-bottom:22px}
+.commit::before{content:""; position:absolute; left:-26px; top:4px; width:10px; height:10px; border-radius:50%; background:var(--surface); border:2px solid var(--accent)}
+.commit .hash{font-family:var(--font-mono); font-size:12px; color:var(--accent)}
+.commit .msg{font-weight:600; margin:2px 0 3px}
+.commit .desc{color:var(--muted); font-size:13.5px}
+.commit .who{font-size:11px; font-family:var(--font-mono); color:var(--muted)}
+.term{background:var(--code-bg); color:var(--code-fg); border-radius:10px; padding:16px 18px; font-family:var(--font-mono); font-size:12.5px; overflow-x:auto; white-space:pre-wrap}
+.term .prompt{color:#5fd38a}
+.term .resp{color:var(--code-muted)}
+.badge{display:inline-flex; align-items:center; gap:5px; font-family:var(--font-mono); font-size:11.5px; padding:3px 9px; border-radius:20px; margin:2px 6px 2px 0}
+.badge.ok{background:color-mix(in srgb, var(--success) 18%, transparent); color:var(--success)}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.compare{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+@media (max-width:640px){.compare{grid-template-columns:1fr}}
+.compare .col h3{font-size:13px; margin-bottom:10px; display:flex; align-items:center; gap:6px}
+.compare .bad h3{color:var(--danger)}
+.compare .good h3{color:var(--success)}
+.footer-note{margin-top:44px; padding-top:18px; border-top:1px solid var(--border); font-size:12.5px; color:var(--muted)}
+</style>
+
+<div class="topbar">
+  <div class="wrap">
+    <div class="eyebrow-row">
+      <div>
+        <div class="eyebrow"><span>Обзор MR</span><span>·</span><span class="branch">feat/notification-back</span></div>
+        <h1 class="title">Товары публикуют события, уведомления их слушают</h1>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Разделы">
+      <button role="tab" data-tab="overview" aria-selected="true">Обзор</button>
+      <button role="tab" data-tab="pipeline" aria-selected="false">Пайплайн</button>
+      <button role="tab" data-tab="bug" aria-selected="false">Баг</button>
+      <button role="tab" data-tab="timeline" aria-selected="false">Коммиты</button>
+      <button role="tab" data-tab="verify" aria-selected="false">Проверка</button>
+    </nav>
+  </div>
+</div>
+
+<div class="wrap">
+
+<label class="ai-switch" style="margin-top:12px">
+  <input type="checkbox" id="aiToggle">
+  <span>Подсветить части, которые написал Claude напрямую (разовые исключения, отмечены <code>NOTE(AI)</code> в коде)</span>
+</label>
+
+<!-- ============ ОБЗОР ============ -->
+<section class="pane" data-pane="overview" data-active>
+  <p class="lede">Эта ветка добавляет две вещи: Redis-кэш перед хранилищем пользователей и Kafka-пайплайн, который превращает изменения товаров в уведомления. Во время проверки второй части нашлась реальная гонка при старте сервисов — она починена и проверена на живом стенде.</p>
+
+  <div class="stats">
+    <div class="stat"><div class="n">7</div><div class="l">коммитов</div></div>
+    <div class="stat"><div class="n">7</div><div class="l">файлов изменено</div></div>
+    <div class="stat"><div class="n">1</div><div class="l">гонка найдена и починена</div></div>
+    <div class="stat"><div class="n">3/3</div><div class="l">тестовых товара дошли живьём</div></div>
+  </div>
+
+  <div class="section-title">Что изменилось</div>
+  <div class="file-row">
+    <span class="file-path">business/domain/userbus/stores/usercache/usercache.go</span>
+    <span class="tag">redis-кэш</span><span class="tag ai">с участием AI</span>
+    <span class="file-desc">readCache / writeCache / deleteCache поверх Redis, ключ — id пользователя. Отдельный JSON-совместимый тип-посредник — строгие типы (name.Name, role.Role) не проходят через encoding/json напрямую.</span>
+  </div>
+  <div class="file-row">
+    <span class="file-path">business/domain/notificationbus/notificationbus.go</span>
+    <span class="tag">бизнес-логика</span>
+    <span class="file-desc">Create/Query для уведомлений — генерирует id и время создания, хранение делегирует интерфейсу Storer.</span>
+  </div>
+  <div class="file-row">
+    <span class="file-path">business/domain/notificationbus/stores/notificationmem/notificationmem.go</span>
+    <span class="tag">хранилище</span>
+    <span class="file-desc">In-memory Storer под мьютексом. Пока сознательно не Postgres — уведомлениям не обязательно переживать рестарт на этом этапе.</span>
+  </div>
+  <div class="file-row">
+    <span class="file-path">api/services/notifications/main.go</span>
+    <span class="tag">kafka-консьюмер</span><span class="tag ai">с участием AI</span>
+    <span class="file-desc">Новый сервис: горутина в цикле читает reader.ReadMessage, разбирает событие о товаре, вызывает notificationBus.Create.</span>
+  </div>
+  <div class="file-row">
+    <span class="file-path">business/domain/productbus/extensions/productkafka/productkafka.go</span>
+    <span class="tag">kafka-продюсер</span><span class="tag ai">с участием AI</span>
+    <span class="file-desc">Extension-декоратор: после успешных Create/Update/Delete в Postgres публикует событие о том, что произошло.</span>
+  </div>
+  <div class="file-row">
+    <span class="file-path">api/services/sales/main.go</span>
+    <span class="tag">подключение</span><span class="tag ai">с участием AI</span>
+    <span class="file-desc">Без этого productkafka.go компилировался, но никогда не выполнялся — Extension просто не создавался. Это тот самый провод от щитка.</span>
+  </div>
+  <div class="file-row">
+    <span class="file-path">zarf/compose/docker_compose.yaml</span>
+    <span class="tag">фикс</span><span class="tag ai">с участием AI</span>
+    <span class="file-desc">Новый шаг init-kafka-topics перед стартом sales/notifications — закрывает гонку, описанную во вкладке «Баг».</span>
+  </div>
+</section>
+
+<!-- ============ ПАЙПЛАЙН ============ -->
+<section class="pane" data-pane="pipeline">
+  <p class="lede">Два независимых потока. Кэш стоит перед одним хранилищем; путь уведомления соединяет два разных сервиса через Kafka. Кликните по шагу, чтобы увидеть его код.</p>
+
+  <div class="section-title">1 · Redis-кэш перед хранилищем пользователей</div>
+  <figure>
+    <div class="diagram-box">
+      <svg viewBox="0 0 620 300" role="img" aria-label="userbus.Business вызывает usercache.Store, тот сначала проверяет Redis, при промахе идёт в Postgres и записывает результат обратно в Redis.">
+        <defs>
+          <marker id="arrCache" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/></marker>
+        </defs>
+        <g font-family="IBM Plex Mono, monospace" font-size="12">
+          <rect x="220" y="10" width="180" height="40" rx="6" fill="none" stroke="currentColor"/>
+          <text x="310" y="35" text-anchor="middle">userbus.Business</text>
+
+          <line x1="310" y1="50" x2="310" y2="88" stroke="currentColor" marker-end="url(#arrCache)"/>
+          <text x="322" y="72" fill="var(--muted)" font-size="10">QueryByID(id)</text>
+
+          <g class="node-btn ai-node" data-snippet="cacheDecorator">
+            <rect x="200" y="90" width="220" height="46" rx="6" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
+            <text x="310" y="118" text-anchor="middle" fill="var(--accent)">usercache.Store</text>
+            <rect class="ai-chip-bg" x="380" y="94" width="34" height="14" rx="3" fill="var(--accent-2)"/>
+            <text class="ai-chip" x="397" y="104" text-anchor="middle">AI</text>
+          </g>
+
+          <line x1="260" y1="136" x2="200" y2="188" stroke="currentColor" marker-end="url(#arrCache)"/>
+          <text x="145" y="165" fill="var(--muted)" font-size="10">1. GET</text>
+          <line x1="360" y1="136" x2="420" y2="188" stroke="currentColor" marker-end="url(#arrCache)"/>
+          <text x="410" y="165" fill="var(--muted)" font-size="10">2. промах → SELECT</text>
+
+          <rect x="80" y="190" width="150" height="44" rx="6" fill="none" stroke="currentColor"/>
+          <text x="155" y="217" text-anchor="middle">Redis</text>
+
+          <rect x="390" y="190" width="150" height="44" rx="6" fill="none" stroke="currentColor"/>
+          <text x="465" y="217" text-anchor="middle">userdb / Postgres</text>
+
+          <path d="M465,190 C465,150 230,150 230,188" fill="none" stroke="currentColor" stroke-dasharray="4 3" marker-end="url(#arrCache)"/>
+          <text x="330" y="150" text-anchor="middle" fill="var(--muted)" font-size="10">3. SET, ttl=1м</text>
+
+          <text x="155" y="260" text-anchor="middle" fill="var(--muted)" font-size="10">источник правды: Postgres</text>
+          <text x="155" y="274" text-anchor="middle" fill="var(--muted)" font-size="10">Redis лишь его зеркалит</text>
+        </g>
+      </svg>
+    </div>
+    <figcaption>Чтение сначала проверяет Redis; при промахе идёт в Postgres и записывает результат обратно. Запись/удаление инвалидируют копию в Redis, так что она не отдаёт устаревшие данные дольше TTL в 1 минуту.</figcaption>
+  </figure>
+  <div id="slot-cache" class="snippet-slot"></div>
+
+  <div class="section-title">2 · Изменение товара → Kafka → уведомление</div>
+  <figure>
+    <div class="diagram-box">
+      <svg viewBox="0 0 420 640" role="img" aria-label="POST в sales создаёт товар в Postgres, затем productkafka публикует событие в топик products, сервис notifications его читает и сохраняет уведомление.">
+        <defs>
+          <marker id="arrPipe" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/></marker>
+        </defs>
+        <g font-family="IBM Plex Mono, monospace" font-size="12">
+          <rect x="60" y="6" width="300" height="40" rx="6" fill="none" stroke="currentColor"/>
+          <text x="210" y="31" text-anchor="middle">POST /v1/products  (sales)</text>
+          <line x1="210" y1="46" x2="210" y2="80" stroke="currentColor" marker-end="url(#arrPipe)"/>
+
+          <rect x="60" y="82" width="300" height="40" rx="6" fill="none" stroke="currentColor"/>
+          <text x="210" y="107" text-anchor="middle">productbus.Create → строка в Postgres</text>
+          <line x1="210" y1="122" x2="210" y2="156" stroke="currentColor" marker-end="url(#arrPipe)"/>
+          <text x="222" y="144" fill="var(--muted)" font-size="10">при успехе</text>
+
+          <g class="node-btn ai-node" data-snippet="productkafka">
+            <rect x="60" y="158" width="300" height="44" rx="6" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
+            <text x="210" y="184" text-anchor="middle" fill="var(--accent)">productkafka.Extension</text>
+            <rect class="ai-chip-bg" x="330" y="163" width="26" height="14" rx="3" fill="var(--accent-2)"/>
+            <text class="ai-chip" x="343" y="173" text-anchor="middle">AI</text>
+          </g>
+          <line x1="210" y1="202" x2="210" y2="238" stroke="currentColor" marker-end="url(#arrPipe)"/>
+          <text x="222" y="224" fill="var(--muted)" font-size="10">writer.WriteMessages</text>
+
+          <rect x="60" y="240" width="300" height="44" rx="6" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="210" y="266" text-anchor="middle" fill="var(--accent)">Kafka · топик "products"</text>
+          <line x1="210" y1="284" x2="210" y2="320" stroke="currentColor" marker-end="url(#arrPipe)"/>
+          <text x="222" y="306" fill="var(--muted)" font-size="10">ReadMessage(ctx)</text>
+
+          <g class="node-btn ai-node" data-snippet="consumer">
+            <rect x="60" y="322" width="300" height="44" rx="6" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
+            <text x="210" y="348" text-anchor="middle" fill="var(--accent)">notifications: горутина-консьюмер</text>
+            <rect class="ai-chip-bg" x="330" y="327" width="26" height="14" rx="3" fill="var(--accent-2)"/>
+            <text class="ai-chip" x="343" y="337" text-anchor="middle">AI</text>
+          </g>
+          <line x1="210" y1="366" x2="210" y2="400" stroke="currentColor" marker-end="url(#arrPipe)"/>
+          <text x="222" y="388" fill="var(--muted)" font-size="10">json.Unmarshal + Create</text>
+
+          <rect x="60" y="402" width="300" height="40" rx="6" fill="none" stroke="currentColor"/>
+          <text x="210" y="427" text-anchor="middle">notificationbus.Create</text>
+          <line x1="210" y1="442" x2="210" y2="476" stroke="currentColor" marker-end="url(#arrPipe)"/>
+
+          <rect x="60" y="478" width="300" height="40" rx="6" fill="none" stroke="currentColor"/>
+          <text x="210" y="503" text-anchor="middle">notificationmem.Store (в памяти)</text>
+          <line x1="210" y1="518" x2="210" y2="552" stroke="currentColor" marker-end="url(#arrPipe)"/>
+          <text x="222" y="544" fill="var(--muted)" font-size="10">по GET</text>
+
+          <rect x="60" y="554" width="300" height="40" rx="6" fill="none" stroke="currentColor"/>
+          <text x="210" y="579" text-anchor="middle">GET /v1/notifications</text>
+        </g>
+      </svg>
+    </div>
+    <figcaption>sales и notifications — разные процессы; Kafka единственное, что их связывает. Если запись в Kafka не удастся, товар всё равно будет создан — ошибка логируется, но не показывается вызывающему.</figcaption>
+  </figure>
+  <div id="slot-pipe" class="snippet-slot"></div>
+</section>
+
+<!-- ============ БАГ ============ -->
+<section class="pane" data-pane="bug">
+  <p class="lede">Проверка на реальном брокере Kafka (а не только <code>go vet</code>) нашла гонку при старте сервисов, которую невозможно было заметить просто читая код.</p>
+
+  <div class="section-title">Что пошло не так</div>
+  <p>Kafka создаёт топик автоматически при первой записи в него — заранее он не обязан существовать. Консьюмер notifications случайно стартовал <em>раньше</em>, чем кто-либо написал в <code>products</code>, и присоединился к группе, когда топика, с точки зрения брокера, ещё не было.</p>
+
+  <div class="compare">
+    <div class="col bad">
+      <h3><span class="dot" style="color:var(--danger)"></span> До</h3>
+      <div class="diagram-box" style="padding:14px">
+        <svg viewBox="0 0 260 300" role="img" aria-label="notifications присоединяется к группе консьюмеров до того, как топик создан, получает 0 партиций и не восстанавливается сам, даже когда топик появляется.">
+          <defs><marker id="a1" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L5,2.5 L0,5 Z" fill="currentColor"/></marker></defs>
+          <g font-family="IBM Plex Mono, monospace" font-size="10.5">
+            <rect x="20" y="6" width="220" height="34" rx="5" fill="none" stroke="currentColor"/>
+            <text x="130" y="27" text-anchor="middle">notifications стартует</text>
+            <line x1="130" y1="40" x2="130" y2="66" stroke="currentColor" marker-end="url(#a1)"/>
+            <rect x="20" y="68" width="220" height="34" rx="5" fill="none" stroke="currentColor"/>
+            <text x="130" y="89" text-anchor="middle">входит в группу, топика нет</text>
+            <line x1="130" y1="102" x2="130" y2="128" stroke="currentColor" marker-end="url(#a1)"/>
+            <rect x="20" y="130" width="220" height="34" rx="5" fill="none" stroke="var(--danger)" stroke-width="1.5"/>
+            <text x="130" y="151" text-anchor="middle" fill="var(--danger)">назначено 0 партиций</text>
+            <line x1="130" y1="164" x2="130" y2="190" stroke="currentColor" marker-end="url(#a1)"/>
+            <rect x="20" y="192" width="220" height="34" rx="5" fill="none" stroke="currentColor"/>
+            <text x="130" y="213" text-anchor="middle">sales пишет → топик создан</text>
+            <line x1="130" y1="226" x2="130" y2="252" stroke="currentColor" marker-end="url(#a1)"/>
+            <rect x="20" y="254" width="220" height="34" rx="5" fill="var(--danger)" fill-opacity="0.15" stroke="var(--danger)" stroke-width="1.5"/>
+            <text x="130" y="275" text-anchor="middle" fill="var(--danger)">завис — ничего не читает</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+    <div class="col good">
+      <h3><span class="dot" style="color:var(--success)"></span> После</h3>
+      <div class="diagram-box" style="padding:14px">
+        <svg viewBox="0 0 260 300" role="img" aria-label="Шаг init-kafka-topics создаёт топик до старта обоих сервисов, поэтому консьюмеру сразу назначается партиция 0.">
+          <defs><marker id="a2" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L5,2.5 L0,5 Z" fill="currentColor"/></marker></defs>
+          <g font-family="IBM Plex Mono, monospace" font-size="10.5">
+            <rect x="20" y="6" width="220" height="34" rx="5" fill="none" stroke="currentColor"/>
+            <text x="130" y="27" text-anchor="middle">init-kafka-topics отработал</text>
+            <line x1="130" y1="40" x2="130" y2="66" stroke="currentColor" marker-end="url(#a2)"/>
+            <rect x="20" y="68" width="220" height="34" rx="5" fill="none" stroke="var(--success)" stroke-width="1.5"/>
+            <text x="130" y="89" text-anchor="middle" fill="var(--success)">топик есть, 1 партиция</text>
+            <line x1="130" y1="102" x2="130" y2="128" stroke="currentColor" marker-end="url(#a2)"/>
+            <rect x="20" y="130" width="220" height="34" rx="5" fill="none" stroke="currentColor"/>
+            <text x="130" y="151" text-anchor="middle">sales + notifications стартуют</text>
+            <line x1="130" y1="164" x2="130" y2="190" stroke="currentColor" marker-end="url(#a2)"/>
+            <rect x="20" y="192" width="220" height="34" rx="5" fill="none" stroke="var(--success)" stroke-width="1.5"/>
+            <text x="130" y="213" text-anchor="middle" fill="var(--success)">входит, получает партицию 0</text>
+            <line x1="130" y1="226" x2="130" y2="252" stroke="currentColor" marker-end="url(#a2)"/>
+            <rect x="20" y="254" width="220" height="34" rx="5" fill="var(--success)" fill-opacity="0.15" stroke="var(--success)" stroke-width="1.5"/>
+            <text x="130" y="275" text-anchor="middle" fill="var(--success)">сообщения идут нормально</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Доказательство с живого стенда</div>
+  <div class="term">$ kafka-consumer-groups.sh --describe --group notifications --members --verbose
+<span class="resp">GROUP           CONSUMER-ID                          #PARTITIONS   ASSIGNMENT
+notifications   main.exe@...-418a266e...              0             -</span>
+
+<span class="prompt"># после перезапуска консьюмера, когда топик уже существовал:</span>
+<span class="resp">notifications   main.exe@...-0e9d6632...              1             (0)</span></div>
+
+  <div class="section-title">Фикс</div>
+  <p>В <code class="mono">docker_compose.yaml</code> добавлен <code class="mono">init-kafka-topics</code> — одноразовый контейнер, который создаёт топик <code>products</code> и завершается. <code class="mono">sales</code> теперь объявляет <code class="mono">depends_on: init-kafka-topics: condition: service_completed_successfully</code>, так что топик гарантированно существует до того, как к нему подключится продюсер или консьюмер.</p>
+  <div class="code-card">
+    <div class="code-head"><span>zarf/compose/docker_compose.yaml</span><button class="copy-btn" data-copy="cp-fix">Копировать</button></div>
+    <pre class="code" id="cp-fix"><span class="c"># одноразовая задача, завершается после создания топика</span>
+init-kafka-topics:
+  image: apache/kafka:3.9.0
+  entrypoint: [kafka-topics.sh, --create, --if-not-exists,
+               --topic, products, --partitions, "1"]
+  depends_on:
+    kafka:
+      condition: service_healthy
+
+sales:
+  depends_on:
+    init-kafka-topics:
+      <span class="k">condition: service_completed_successfully</span></pre>
+  </div>
+</section>
+
+<!-- ============ КОММИТЫ ============ -->
+<section class="pane" data-pane="timeline">
+  <p class="lede">Семь коммитов поверх уже существующего каркаса, в порядке появления.</p>
+  <div class="timeline">
+    <div class="commit">
+      <div class="hash">50a21ade</div>
+      <div class="msg">feat: implement Redis user cache and notification create/query</div>
+      <div class="desc">usercache read/write/delete поверх Redis; notificationbus Create/Query.</div>
+      <div class="who">разработчик + AI (разово, по просьбе)</div>
+    </div>
+    <div class="commit">
+      <div class="hash">e6d88ad3</div>
+      <div class="msg">docs: remove stale TODO comments from usercache</div>
+      <div class="desc">Уборка — пронумерованные TODO(dev)-планы остались в коде уже после реализации.</div>
+      <div class="who">AI</div>
+    </div>
+    <div class="commit">
+      <div class="hash">16a8edf3</div>
+      <div class="msg">docs: allow Claude to commit/push when explicitly asked</div>
+      <div class="desc">Изменение политики в AGENTS.md — запрошено и явно подтверждено разработчиком.</div>
+      <div class="who">AI, по просьбе</div>
+    </div>
+    <div class="commit">
+      <div class="hash">d5e75ac1</div>
+      <div class="msg">feat: consume Kafka events and create notifications</div>
+      <div class="desc">Цикл чтения (разработчик) плюс блок unmarshal/Create (AI, по просьбе).</div>
+      <div class="who">разработчик + AI</div>
+    </div>
+    <div class="commit">
+      <div class="hash">4812d992</div>
+      <div class="msg">feat: publish product change events to Kafka in productkafka</div>
+      <div class="desc">Create/Update/Delete теперь публикуют события — написано разработчиком, с мелкими правками от AI.</div>
+      <div class="who">разработчик + AI</div>
+    </div>
+    <div class="commit">
+      <div class="hash">9599efc8</div>
+      <div class="msg">fix: pre-create Kafka products topic before sales/notifications start</div>
+      <div class="desc">Фикс в docker-compose для гонки из вкладки «Баг», проверен живьём.</div>
+      <div class="who">AI, по просьбе</div>
+    </div>
+  </div>
+  <p style="color:var(--muted); font-size:13px">Базовый коммит <code>8fa0f782</code> (каркас + заготовка Kafka-продюсера) появился раньше этой сессии работы и не показан выше.</p>
+</section>
+
+<!-- ============ ПРОВЕРКА ============ -->
+<section class="pane" data-pane="verify">
+  <p class="lede">Проверено на реальном стенде — Postgres, Redis и Kafka в Docker, оба Go-сервиса запущены заново — а не только <code>go build</code>.</p>
+
+  <div class="section-title">Результат</div>
+  <span class="badge ok"><span class="dot"></span>go build ./...</span>
+  <span class="badge ok"><span class="dot"></span>go vet</span>
+  <span class="badge ok"><span class="dot"></span>staticcheck</span>
+  <span class="badge ok"><span class="dot"></span>3 товара создано → 3 уведомления доставлено</span>
+
+  <div class="section-title">Транскрипт</div>
+  <div class="term"><span class="prompt">$ curl -X POST .../v1/products -d '{"name":"TestProduct", ...}'</span>
+<span class="resp">{"id":"6b116430-...","name":"TestProduct", ...}</span>
+
+<span class="prompt">$ curl .../v1/notifications</span>
+<span class="resp">[
+  {"productID":"6b116430-...","eventType":"product.created",
+   "message":"product TestProduct created"},
+  {"productID":"0fe3b3ba-...","eventType":"product.created",
+   "message":"product SecondProduct created"},
+  {"productID":"2643859b-...","eventType":"product.created",
+   "message":"product ThirdProduct created"}
+]</span></div>
+  <p style="font-size:13px; color:var(--muted)">Первые два уведомления появились только после перезапуска консьюмера — почему, смотрите во вкладке «Баг», и там же фикс, после которого перезапуск больше не нужен.</p>
+</section>
+
+<div class="footer-note">Для ревьюера: переключатель «Подсветить части, которые написал Claude напрямую» выше отмечает именно те функции, у которых в исходниках стоит комментарий <code>NOTE(AI)</code> — авторство здесь совпадает с репозиторием, а не с тем, что утверждает эта страница.</div>
+
+</div>
+
+<script>
+(function(){
+  var tabs = document.querySelectorAll('.tabs button');
+  var panes = document.querySelectorAll('.pane');
+  function activate(name, push){
+    tabs.forEach(function(b){ b.setAttribute('aria-selected', b.dataset.tab === name); });
+    panes.forEach(function(p){
+      if(p.dataset.pane === name){ p.setAttribute('data-active',''); }
+      else { p.removeAttribute('data-active'); }
+    });
+    if(push) location.hash = name;
+  }
+  tabs.forEach(function(b){ b.addEventListener('click', function(){ activate(b.dataset.tab, true); }); });
+  var initial = (location.hash || '').replace('#','');
+  if(initial && document.querySelector('.pane[data-pane="'+initial+'"]')) activate(initial,false);
+
+  var toggle = document.getElementById('aiToggle');
+  toggle.addEventListener('change', function(){
+    document.body.classList.toggle('show-ai', toggle.checked);
+  });
+
+  var snippets = {
+    cacheDecorator: {title:'usercache.go — writeCache', code:
+"func (s *Store) writeCache(ctx context.Context, bus userbus.User) {\n\tif s.cache == nil {\n\t\treturn\n\t}\n\tdata, err := json.Marshal(toCacheUser(bus))\n\tif err != nil {\n\t\ts.log.Error(ctx, \"usercache: marshal\", \"ERROR\", err)\n\t\treturn\n\t}\n\tif err := s.cache.Set(ctx, bus.ID.String(), data, s.ttl).Err(); err != nil {\n\t\ts.log.Error(ctx, \"usercache: write\", \"ERROR\", err)\n\t}\n}"},
+    productkafka: {title:'productkafka.go — Create', code:
+"func (ext *Extension) Create(ctx context.Context, np productbus.NewProduct) (productbus.Product, error) {\n\tprd, err := ext.bus.Create(ctx, np)\n\tif err != nil {\n\t\treturn productbus.Product{}, err\n\t}\n\tevent := productEvent{\n\t\tProductID: prd.ID,\n\t\tEventType: \"product.created\",\n\t\tMessage:   fmt.Sprintf(\"product %s created\", prd.Name.String()),\n\t}\n\tdata, _ := json.Marshal(event)\n\tif err := ext.writer.WriteMessages(ctx, kafka.Message{Value: data}); err != nil {\n\t\text.log.Error(ctx, \"productkafka: write\", \"ERROR\", err)\n\t}\n\treturn prd, nil\n}"},
+    consumer: {title:'notifications/main.go — горутина-консьюмер', code:
+"go func() {\n\tfor {\n\t\tmsg, err := reader.ReadMessage(ctx)\n\t\tif err != nil {\n\t\t\tlog.Error(ctx, \"read\", \"err\", err)\n\t\t\treturn\n\t\t}\n\t\tvar event productEvent\n\t\tif err := json.Unmarshal(msg.Value, &event); err != nil {\n\t\t\tlog.Error(ctx, \"unmarshal\", \"err\", err)\n\t\t\tcontinue\n\t\t}\n\t\tnn := notificationbus.NewNotification{\n\t\t\tProductID: event.ProductID, EventType: event.EventType, Message: event.Message,\n\t\t}\n\t\tif _, err := notificationBus.Create(ctx, nn); err != nil {\n\t\t\tlog.Error(ctx, \"create notification\", \"err\", err)\n\t\t}\n\t}\n}()"}
+  };
+
+  function renderSnippet(slot, key){
+    var s = snippets[key];
+    if(!s){ slot.innerHTML=''; return; }
+    slot.innerHTML =
+      '<div class="code-card"><div class="code-head"><span>'+s.title+'</span>'+
+      '<button class="copy-btn" type="button">Копировать</button></div>'+
+      '<pre class="code"></pre></div>';
+    slot.querySelector('pre').textContent = s.code;
+    slot.querySelector('.copy-btn').addEventListener('click', function(){
+      var btn = this;
+      navigator.clipboard.writeText(s.code).then(function(){
+        btn.textContent='Скопировано'; setTimeout(function(){btn.textContent='Копировать';},1200);
+      }).catch(function(){});
+    });
+  }
+
+  document.querySelectorAll('[data-snippet]').forEach(function(node){
+    node.addEventListener('click', function(){
+      var key = node.getAttribute('data-snippet');
+      var slot = node.closest('svg').parentElement.parentElement.querySelector('.snippet-slot');
+      if(slot.dataset.open === key){ slot.innerHTML=''; slot.dataset.open=''; return; }
+      renderSnippet(slot, key);
+      slot.dataset.open = key;
+    });
+  });
+
+  document.querySelectorAll('.copy-btn[data-copy]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var text = document.getElementById(btn.dataset.copy).textContent;
+      navigator.clipboard.writeText(text).then(function(){
+        btn.textContent='Скопировано'; setTimeout(function(){btn.textContent='Копировать';},1200);
+      }).catch(function(){});
+    });
+  });
+})();
+</script>
