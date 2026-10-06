@@ -63,8 +63,8 @@ k8s_resource('alloy', labels=['observability'])
 # Compile binary locally for fast iteration
 local_resource(
   'auth-compile',
-  'CGO_ENABLED=0 GOOS=linux go build -o ./zarf/build/auth ./api/services/auth',
-  deps=['./api/services/auth', './app', './business', './foundation'],
+  'CGO_ENABLED=0 GOOS=linux go build -o ./zarf/build/auth ./cmd/auth',
+  deps=['./cmd/auth', './internal/app', './internal/business', './pkg/foundation'],
   labels=['build'],
   ignore=['**/*_test.go'],
 )
@@ -103,8 +103,8 @@ k8s_resource(
 # Compile binaries locally for fast iteration
 local_resource(
   'sales-compile',
-  'CGO_ENABLED=0 GOOS=linux go build -o ./zarf/build/sales ./api/services/sales && CGO_ENABLED=0 GOOS=linux go build -o ./zarf/build/admin ./api/tooling/admin',
-  deps=['./api/services/sales', './api/tooling/admin', './app', './business', './foundation'],
+  'CGO_ENABLED=0 GOOS=linux go build -o ./zarf/build/sales ./cmd/sales && CGO_ENABLED=0 GOOS=linux go build -o ./zarf/build/admin ./cmd/admin',
+  deps=['./cmd/sales', './cmd/admin', './internal/app', './internal/business', './pkg/foundation'],
   labels=['build'],
   ignore=['**/*_test.go'],
 )
@@ -153,8 +153,8 @@ local_resource(
 # Compile binary locally for fast iteration
 local_resource(
   'metrics-compile',
-  'CGO_ENABLED=0 GOOS=linux go build -o ./zarf/build/metrics ./api/services/metrics',
-  deps=['./api/services/metrics', './app', './business', './foundation'],
+  'CGO_ENABLED=0 GOOS=linux go build -o ./zarf/build/metrics ./cmd/metrics',
+  deps=['./cmd/metrics', './internal/app', './internal/business', './pkg/foundation'],
   labels=['build'],
   ignore=['**/*_test.go'],
 )

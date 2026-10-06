@@ -281,10 +281,10 @@ dev-update: build dev-load dev-restart
 dev-update-apply: build dev-load dev-apply
 
 dev-logs:
-	kubectl logs --namespace=$(NAMESPACE) -l app=$(SALES_APP) --all-containers=true -f --tail=100 --max-log-requests=6 | go run api/tooling/logfmt/main.go -service=$(SALES_APP)
+	kubectl logs --namespace=$(NAMESPACE) -l app=$(SALES_APP) --all-containers=true -f --tail=100 --max-log-requests=6 | go run cmd/logfmt/main.go -service=$(SALES_APP)
 
 dev-logs-auth:
-	kubectl logs --namespace=$(NAMESPACE) -l app=$(AUTH_APP) --all-containers=true -f --tail=100 | go run api/tooling/logfmt/main.go
+	kubectl logs --namespace=$(NAMESPACE) -l app=$(AUTH_APP) --all-containers=true -f --tail=100 | go run cmd/logfmt/main.go
 
 # ------------------------------------------------------------------------------
 
@@ -376,10 +376,10 @@ compose-logs:
 # Administration
 
 migrate:
-	export SALES_DB_HOST=localhost; go run api/tooling/admin/main.go migrate
+	export SALES_DB_HOST=localhost; go run cmd/admin/main.go migrate
 
 seed: migrate
-	export SALES_DB_HOST=localhost; go run api/tooling/admin/main.go seed
+	export SALES_DB_HOST=localhost; go run cmd/admin/main.go seed
 
 pgcli:
 	pgcli postgresql://postgres:postgres@localhost
@@ -391,7 +391,7 @@ readiness:
 	curl -i http://localhost:3000/v1/readiness
 
 token-gen:
-	export SALES_DB_HOST=localhost; go run api/tooling/admin/main.go gentoken 5cf37266-3473-4006-984f-9325122678b7 54bb2165-71e1-41a6-af3e-7da4a0e1e2c1
+	export SALES_DB_HOST=localhost; go run cmd/admin/main.go gentoken 5cf37266-3473-4006-984f-9325122678b7 54bb2165-71e1-41a6-af3e-7da4a0e1e2c1
 
 # ==============================================================================
 # Metrics and Tracing
@@ -514,13 +514,13 @@ list:
 # Class Stuff
 
 run-auth:
-	go run api/services/auth/main.go | go run api/tooling/logfmt/main.go
+	go run cmd/auth/main.go | go run cmd/logfmt/main.go
 
 run:
-	go run api/services/sales/main.go | go run api/tooling/logfmt/main.go
+	go run cmd/sales/main.go | go run cmd/logfmt/main.go
 
 run-help:
-	go run api/services/sales/main.go --help | go run api/tooling/logfmt/main.go
+	go run cmd/sales/main.go --help | go run cmd/logfmt/main.go
 
 curl:
 	curl -i http://localhost:3000/v1/hack
@@ -532,7 +532,7 @@ load-hack:
 	hey -m GET -c 100 -n 100000 "http://localhost:3000/v1/hack"
 
 admin:
-	go run api/tooling/admin/main.go
+	go run cmd/admin/main.go
 
 ready:
 	curl -i http://localhost:3000/v1/readiness

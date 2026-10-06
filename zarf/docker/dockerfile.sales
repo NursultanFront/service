@@ -15,11 +15,11 @@ RUN go mod download
 COPY . /service
 
 # Build the admin binary.
-WORKDIR /service/api/tooling/admin
+WORKDIR /service/cmd/admin
 RUN go build -ldflags "-X main.tag=${BUILD_TAG}"
 
 # Build the service binary.
-WORKDIR /service/api/services/sales
+WORKDIR /service/cmd/sales
 RUN go build -ldflags "-X main.tag=${BUILD_TAG}"
 
 
@@ -29,8 +29,8 @@ ARG BUILD_DATE
 ARG BUILD_TAG
 RUN addgroup -g 1000 -S sales && \
     adduser -u 1000 -h /service -G sales -S sales
-COPY --from=build_sales --chown=sales:sales /service/api/tooling/admin/admin /service/admin
-COPY --from=build_sales --chown=sales:sales /service/api/services/sales/sales /service/sales
+COPY --from=build_sales --chown=sales:sales /service/cmd/admin/admin /service/admin
+COPY --from=build_sales --chown=sales:sales /service/cmd/sales/sales /service/sales
 WORKDIR /service
 USER sales
 CMD ["./sales"]

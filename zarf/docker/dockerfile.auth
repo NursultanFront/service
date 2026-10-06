@@ -16,7 +16,7 @@ COPY . /service
 
 # Build the service binary. We are doing this last since this will be different
 # every time we run through this process.
-WORKDIR /service/api/services/auth
+WORKDIR /service/cmd/auth
 RUN go build -ldflags "-X main.tag=${BUILD_TAG}"
 
 
@@ -27,7 +27,7 @@ ARG BUILD_TAG
 RUN addgroup -g 1000 -S auth && \
     adduser -u 1000 -h /service -G auth -S auth
 COPY --from=build_auth --chown=auth:auth /service/zarf/keys/. /service/zarf/keys/.
-COPY --from=build_auth --chown=auth:auth /service/api/services/auth/auth /service/auth
+COPY --from=build_auth --chown=auth:auth /service/cmd/auth/auth /service/auth
 WORKDIR /service
 USER auth
 CMD ["./auth"]

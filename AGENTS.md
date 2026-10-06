@@ -61,13 +61,13 @@ one task is done.
     - Business → Storage: `toDB<Type>`
     - Storage → Business: `toBus<Type>` (parses native → strong, returns error)
 
-  Before writing, editing, or auditing any `app/*`, `business/domain/*`, or
+  Before writing, editing, or auditing any `internal/app/*`, `internal/business/domain/*`, or
   `.../stores/*db` Go file, follow the `layered-architecture-types` skill — it holds the
   full type-boundary rules, converter table, examples, and a conformance checklist.
 - Business-layer extensions (the `ExtBusiness`/`Extension` decorator pattern). Cross-cutting
   concerns (OTEL, logging, metrics, caching, auth) wrap the core `Business` without
   modifying it. Before adding a concern to a business domain, creating files under
-  `business/domain/*/extensions/*`, or adding the `ExtBusiness`/`Extension` seam to a
+  `internal/business/domain/*/extensions/*`, or adding the `ExtBusiness`/`Extension` seam to a
   `*bus` package, follow the `business-layer-extensions` skill — it holds the three-piece
   pattern (seam, extension, wiring), wrap-order rules, reference examples, and a checklist.
 
@@ -82,12 +82,12 @@ Combine two modes — do not default to full Docker rebuilds for every small cha
   export SALES_DB_HOST=localhost:5434  # host:port mapped to Postgres, see docker_compose.yaml
   export SALES_AUTH_HOST=http://localhost:6060   # docker-network name "auth" only resolves inside compose
   export SALES_WEB_CORS_ALLOWED_ORIGINS=http://localhost:3001
-  go run api/services/sales/main.go
+  go run cmd/sales/main.go
   ```
   ```bash
   export AUTH_DB_HOST=localhost:5434
   export AUTH_WEB_CORS_ALLOWED_ORIGINS=http://localhost:3001
-  go run api/services/auth/main.go
+  go run cmd/auth/main.go
   ```
   Postgres itself still runs in Docker (`docker compose up -d database`) — only the Go
   service binaries run natively. Ctrl+C and re-run after each code change.
@@ -104,7 +104,7 @@ Combine two modes — do not default to full Docker rebuilds for every small cha
   docker image prune -f
   ```
 - Whichever mode is running, `CORSAllowedOrigins` defaults to `*` (non-credentialed — see
-  `foundation/web/web.go`'s CORS handling). The httpOnly auth cookie flow only works when the
+  `pkg/foundation/web/web.go`'s CORS handling). The httpOnly auth cookie flow only works when the
   frontend's exact origin (`http://localhost:3001` in dev) is explicitly configured via
   `SALES_WEB_CORS_ALLOWED_ORIGINS` / `AUTH_WEB_CORS_ALLOWED_ORIGINS` — set it explicitly in
   both `go run` env vars and `docker_compose.yaml`, don't rely on the wildcard default.
