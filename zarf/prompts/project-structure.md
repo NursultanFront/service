@@ -4,14 +4,17 @@ This document describes the architecture and structure of the Ardan Labs Service
 
 ## Overview
 
-This is a Go-based microservice project that follows a strict layered architecture with clear dependency rules. The project is organized into four top-level packages that represent the architectural layers, plus a deployment/configuration layer.
+This is a Go-based microservice project that follows a strict layered architecture with clear dependency rules, laid out using the standard Go `cmd/` + `internal/` + `pkg/` convention: entry points in `cmd/`, everything not meant to be imported by other modules in `internal/`, and the one layer that could be extracted into its own reusable module in `pkg/`.
 
 ```
 project-root/
-├── api/            # Binaries and entry points (services, tooling, frontends)
-├── app/            # Application layer (request/response handling, routing, middleware)
-├── business/       # Business logic layer (core domain logic, data access)
-├── foundation/     # Foundational packages (reusable across projects)
+├── cmd/            # Entry points (one directory per binary: services + CLI tools)
+├── internal/
+│   ├── app/            # Application layer (request/response handling, routing, middleware)
+│   └── business/       # Business logic layer (core domain logic, data access)
+├── pkg/
+│   └── foundation/     # Foundational packages (reusable across projects)
+├── api/frontends/  # Frontend applications (not Go; layout convention above doesn't apply)
 ├── zarf/           # Deployment and configuration (Docker, K8s, keys, prompts)
 ├── vendor/         # Vendored dependencies
 ├── go.mod
@@ -24,24 +27,24 @@ project-root/
 The dependency flow is strictly one-directional:
 
 ```
-api → app → business → foundation
+cmd → internal/app → internal/business → pkg/foundation
 ```
 
-- **foundation** depends on nothing inside the project. These packages can be extracted and used in other projects.
-- **business** depends only on **foundation**.
-- **app** depends on **business** and **foundation**.
-- **api** depends on **app**, **business**, and **foundation**.
+- **pkg/foundation** depends on nothing inside the project. These packages can be extracted and used in other projects — that's exactly why they live under `pkg/` instead of `internal/`.
+- **internal/business** depends only on **pkg/foundation**.
+- **internal/app** depends on **internal/business** and **pkg/foundation**.
+- **cmd** depends on **internal/app**, **internal/business**, and **pkg/foundation**.
 
-No package may import from a layer above it. This rule is absolute.
+No package may import from a layer above it. This rule is absolute. The Go compiler also enforces a second rule here for free: nothing outside this module can import anything under `internal/`, by language rule — not just convention.
 
 ---
 
-## Layer 1: foundation/
+## Layer 1: pkg/foundation/
 
 The foundation layer contains small, generic, reusable packages that have no knowledge of the business domain. These packages could be moved to their own module or repository.
 
 ```
-foundation/
+pkg/foundation/
 ├── docker/         # Docker container management for testing
 ├── keystore/       # RSA key management (loading from files, JSON)
 ├── logger/         # Structured logging (wraps slog patterns)
@@ -50,7 +53,7 @@ foundation/
 └── worker/         # Background worker/goroutine management
 ```
 
-### foundation/web (The Web Framework)
+### pkg/foundation/web (The Web Framework)
 
 This is a small, custom web framework built on top of Go's `net/http.ServeMux`. Key design decisions:
 
@@ -66,12 +69,12 @@ Route registration supports two forms:
 
 ---
 
-## Layer 2: business/
+## Layer 2: internal/business/
 
 The business layer contains all core domain logic and data access. It has no knowledge of HTTP, request/response formats, or application-level concerns.
 
 ```
-business/
+internal/business/
 ├── domain/         # Domain packages (one per business entity)
 │   ├── auditbus/       # Audit log business logic
 │   ├── homebus/        # Home entity business logic
@@ -96,7 +99,7 @@ business/
     └── role/           # Role value type (ADMIN, USER, etc.)
 ```
 
-### Domain Package Pattern (e.g., `business/domain/userbus/`)
+### Domain Package Pattern (e.g., `internal/business/domain/userbus/`)
 
 Every domain package follows a consistent structure:
 
@@ -121,7 +124,7 @@ userbus/
 
 - **`userbus.go`** — Contains the `Business` struct and core CRUD methods (Create, Update, Delete, Query, QueryByID, etc.). Defines the `Storer` interface for data access and the `ExtBusiness` interface for the extension pattern. The `NewBusiness` constructor returns `ExtBusiness` and wraps itself in any provided extensions.
 
-- **`model.go`** — Defines the core domain models using strong types from `business/types/`:
+- **`model.go`** — Defines the core domain models using strong types from `internal/business/types/`:
   - `User` — The full entity model (what gets stored/retrieved)
   - `NewUser` — Input model for creation
   - `UpdateUser` — Input model for updates (pointer fields for optional/partial updates)
@@ -186,7 +189,7 @@ Built-in extensions:
 
 ### Delegate System
 
-The delegate (`business/sdk/delegate/`) provides cross-domain communication without circular imports. A domain can fire an action (e.g., "user deleted") and other domains can register handlers for that action.
+The delegate (`internal/business/sdk/delegate/`) provides cross-domain communication without circular imports. A domain can fire an action (e.g., "user deleted") and other domains can register handlers for that action.
 
 ```go
 delegate.Register(domainType, actionType, handlerFunc)
@@ -195,7 +198,7 @@ delegate.Call(ctx, data)
 
 This is a synchronous, in-process call mechanism. It is not an event bus.
 
-### Value Types (`business/types/`)
+### Value Types (`internal/business/types/`)
 
 The business layer avoids using raw primitive types like `string`, `int`, and `float64` in its domain models. These are considered "weak" types because they carry no semantic meaning and cannot be validated by the compiler. A `string` can hold any value—an empty string, a SQL injection, a 10,000-character blob—and the compiler will happily accept it. This means every function that receives a `string` must defensively validate it, and there is no guarantee that validation has already happened.
 
@@ -334,12 +337,12 @@ This means validation happens exactly once, at the edge. Once data enters the bu
 
 ---
 
-## Layer 3: app/
+## Layer 3: internal/app/
 
 The app layer is the translation layer between HTTP requests/responses and business logic. It handles input decoding, output encoding, validation, routing, authentication, and middleware.
 
 ```
-app/
+internal/app/
 ├── domain/         # Domain-specific app handlers (one per business domain)
 │   ├── auditapp/       # Audit endpoints
 │   ├── authapp/        # Authentication endpoints
@@ -364,7 +367,7 @@ app/
     └── query/          # Query result wrapper with pagination metadata
 ```
 
-### App Domain Package Pattern (e.g., `app/domain/userapp/`)
+### App Domain Package Pattern (e.g., `internal/app/domain/userapp/`)
 
 Each app domain package follows a consistent structure:
 
@@ -396,7 +399,7 @@ userapp/
   3. Calls business layer
   4. Converts business model to app model and returns it
 
-### Middleware (`app/sdk/mid/`)
+### Middleware (`internal/app/sdk/mid/`)
 
 Middleware is applied in two ways:
 1. **Global middleware** — Applied to all routes via `mux.WebAPI()`: Otel → Logger → Errors → Metrics → Panics
@@ -415,7 +418,7 @@ Available middleware:
 
 Context values are set and retrieved through typed functions (e.g., `mid.GetUser(ctx)`, `mid.GetClaims(ctx)`).
 
-### Mux Configuration (`app/sdk/mux/`)
+### Mux Configuration (`internal/app/sdk/mux/`)
 
 The `mux.WebAPI()` function is the central wiring point. It:
 1. Creates a `web.App` with global middleware
@@ -436,14 +439,14 @@ type Config struct {
 }
 ```
 
-### Error Handling (`app/sdk/errs/`)
+### Error Handling (`internal/app/sdk/errs/`)
 
 Errors implement `web.Encoder` so they flow through the same response path:
 - `errs.Error` — Structured error with error code and message. Implements `HTTPStatus()` to map error codes to HTTP status codes.
 - `errs.FieldErrors` — Collection of field-level validation errors.
 - Error codes: `OK`, `Canceled`, `Unknown`, `InvalidArgument`, `NotFound`, `AlreadyExists`, `PermissionDenied`, `Internal`, `Aborted`, `Unauthenticated`, etc. (gRPC-style codes mapped to HTTP status codes).
 
-### Authentication & Authorization (`app/sdk/auth/`)
+### Authentication & Authorization (`internal/app/sdk/auth/`)
 
 - **Authentication**: JWT tokens (RS256) validated via the auth service. The auth service is a separate microservice.
 - **Authorization**: OPA (Open Policy Agent) rules evaluated locally. Rules are defined in `.rego` files embedded in the binary.
@@ -451,37 +454,38 @@ Errors implement `web.Encoder` so they flow through the same response path:
 
 ---
 
-## Layer 4: api/
+## Layer 4: cmd/
 
-The api layer contains the entry points—main packages that start the services, tooling binaries, and frontend applications.
+The cmd layer contains the entry points—main packages that start the services and tooling binaries. (Frontend applications live separately under `api/frontends/`; they aren't Go, so the `cmd/`/`internal/`/`pkg/` convention doesn't apply to them.)
 
 ```
-api/
-├── frontends/      # Frontend applications
-│   └── admin/          # Admin UI (web frontend)
-├── services/       # Microservice binaries
-│   ├── auth/           # Auth service (JWT issuance/validation, gRPC + HTTP)
-│   │   ├── build/          # Route composition (which app domains to include)
-│   │   └── main.go         # Service entry point
-│   ├── metrics/        # Metrics sidecar service
-│   │   ├── collector/
-│   │   ├── publisher/
-│   │   └── main.go
-│   └── sales/          # Primary API service
-│       ├── build/          # Route composition using build tags
-│       │   ├── all.go          # Default build: all routes
-│       │   ├── crud.go         # `crud` build tag: CRUD routes only
-│       │   └── reporting.go    # `reporting` build tag: reporting routes only
-│       ├── static/         # Embedded static files
-│       ├── tests/          # API-level integration tests
-│       │   ├── userapi/
-│       │   ├── homeapi/
-│       │   ├── productapi/
-│       │   └── ...
-│       └── main.go         # Service entry point
-└── tooling/        # CLI tools
-    ├── admin/          # Admin CLI tool (key generation, migrations, etc.)
-    └── logfmt/         # Log formatting tool (makes JSON logs readable)
+cmd/
+├── auth/           # Auth service (JWT issuance/validation, gRPC + HTTP)
+│   ├── build/          # Route composition (which app domains to include)
+│   └── main.go         # Service entry point
+├── metrics/        # Metrics sidecar service
+│   ├── collector/
+│   ├── publisher/
+│   └── main.go
+├── sales/          # Primary API service
+│   ├── build/          # Route composition using build tags
+│   │   ├── all.go          # Default build: all routes
+│   │   ├── crud.go         # `crud` build tag: CRUD routes only
+│   │   └── reporting.go    # `reporting` build tag: reporting routes only
+│   ├── static/         # Embedded static files
+│   ├── tests/          # API-level integration tests
+│   │   ├── userapi/
+│   │   ├── homeapi/
+│   │   ├── productapi/
+│   │   └── ...
+│   └── main.go         # Service entry point
+├── admin/          # Admin CLI tool (key generation, migrations, etc.)
+└── logfmt/         # Log formatting tool (makes JSON logs readable)
+```
+
+```
+api/frontends/
+└── admin/          # Admin UI (web frontend)
 ```
 
 ### Service Entry Point Pattern (`main.go`)
@@ -490,7 +494,7 @@ Each service `main.go` follows the same pattern:
 
 1. **Logger setup** — Create structured logger with event hooks
 2. **Configuration** — Parse config from environment variables using `ardanlabs/conf`
-3. **Database** — Open connection pool using `business/sdk/sqldb`
+3. **Database** — Open connection pool using `internal/business/sdk/sqldb`
 4. **Business layer construction** — Instantiate stores, extensions, and business types:
    ```go
    storage := usercache.NewStore(log, userdb.NewStore(log, db), time.Minute)
@@ -537,9 +541,9 @@ zarf/
 ### 1. Strict Model Separation
 
 There are three distinct model layers that never mix:
-- **Business models** (`business/domain/userbus/model.go`) — Use strong value types (`name.Name`, `role.Role`). No JSON tags. These are what the business logic works with.
-- **App models** (`app/domain/userapp/model.go`) — Use primitive types (`string`, `bool`). Have JSON tags. These are the API contract.
-- **Store models** (`business/domain/userbus/stores/userdb/model.go`) — Use database-compatible types. Have `db` tags. These map to database rows.
+- **Business models** (`internal/business/domain/userbus/model.go`) — Use strong value types (`name.Name`, `role.Role`). No JSON tags. These are what the business logic works with.
+- **App models** (`internal/app/domain/userapp/model.go`) — Use primitive types (`string`, `bool`). Have JSON tags. These are the API contract.
+- **Store models** (`internal/business/domain/userbus/stores/userdb/model.go`) — Use database-compatible types. Have `db` tags. These map to database rows.
 
 Conversion functions translate between layers. Validation happens during conversion from app models to business models.
 
@@ -597,16 +601,16 @@ All configuration is driven by environment variables using the `ardanlabs/conf` 
 ## Testing Strategy
 
 ### Unit Tests
-- Located alongside business logic: `business/domain/userbus/userbus_test.go`
-- Use helpers in `business/sdk/unittest/`
+- Located alongside business logic: `internal/business/domain/userbus/userbus_test.go`
+- Use helpers in `internal/business/sdk/unittest/`
 - Test business logic against a real database using Docker
 
 ### Integration/API Tests
-- Located in: `api/services/sales/tests/`
+- Located in: `cmd/sales/tests/`
 - Organized by domain: `userapi/`, `homeapi/`, `productapi/`, etc.
-- Use helpers in `app/sdk/apitest/`
+- Use helpers in `internal/app/sdk/apitest/`
 - Test the full HTTP request/response cycle
-- Require a running database (managed via `business/sdk/dbtest/`)
+- Require a running database (managed via `internal/business/sdk/dbtest/`)
 
 ---
 
@@ -639,7 +643,7 @@ All configuration is driven by environment variables using the `ardanlabs/conf` 
 
 To add a new domain (e.g., `order`):
 
-1. **Business layer** (`business/domain/orderbus/`):
+1. **Business layer** (`internal/business/domain/orderbus/`):
    - `model.go` — Define `Order`, `NewOrder`, `UpdateOrder` structs using value types
    - `filter.go` — Define `QueryFilter` struct
    - `order.go` — Define ordering constants and `DefaultOrderBy`
@@ -652,25 +656,25 @@ To add a new domain (e.g., `order`):
    - `testutil.go` — Test data generation helpers
    - `orderbus_test.go` — Business-level tests
 
-2. **App layer** (`app/domain/orderapp/`):
+2. **App layer** (`internal/app/domain/orderapp/`):
    - `model.go` — JSON-tagged app models + conversion functions (toAppOrder, toBusNewOrder)
    - `filter.go` — Query parameter parsing
    - `order.go` — App-to-business order field mapping
    - `route.go` — Route registration with middleware
    - `orderapp.go` — Handler methods
 
-3. **Mux wiring** (`app/sdk/mux/mux.go`):
+3. **Mux wiring** (`internal/app/sdk/mux/mux.go`):
    - Add `OrderBus` field to `BusConfig` struct
 
-4. **Service wiring** (`api/services/sales/main.go`):
+4. **Service wiring** (`cmd/sales/main.go`):
    - Instantiate store, extensions, and business
    - Add to `mux.BusConfig`
 
-5. **Build registration** (`api/services/sales/build/all.go`):
+5. **Build registration** (`cmd/sales/build/all.go`):
    - Add `orderapp.Routes(app, ...)` call
 
-6. **Tests** (`api/services/sales/tests/orderapi/`):
+6. **Tests** (`cmd/sales/tests/orderapi/`):
    - API integration tests
 
-7. **Database migration** (`business/sdk/migrate/sql/`):
+7. **Database migration** (`internal/business/sdk/migrate/sql/`):
    - Add migration SQL file for the new table
