@@ -91,7 +91,14 @@ Precedence when documents disagree:
    illustrations, not a ban on these patterns.
 3. Anything else that is unclear → ask the user.
 
-### Target layout (one service per repository)
+### Target layout
+
+Decision 2026-10-18 (user, following mentor German): this repository keeps several tightly
+coupled services as `cmd/<svc>/main.go` (`cmd/sales`, `cmd/auth`, `cmd/metrics`, CLIs
+`cmd/admin`, `cmd/logfmt`) — it is **not** split into one repo per service. Wiring/config
+go to `internal/app/<svc>` and `internal/config/<svc>`. `pkg/foundation/*` is shared,
+business-agnostic infrastructure reused by all `cmd/*` and **stays in `pkg/`**. The tree below
+is the standard's single-service shape; read `cmd/app` as `cmd/<svc>`.
 
 ```text
 project-root/
@@ -148,20 +155,19 @@ project-root/
    cause (logged) and a safe human-readable external message (returned over HTTP/gRPC).
 6. **No `utils/` package, no `google/wire`.** Helpers live next to their domain or in a
    meaningful `sys/`/`pkg/` package; dependencies are wired by hand in `internal/app`.
-7. **`api/` holds no Go code and no frontends; `pkg/` holds only code intended for other
-   services.** Internal infrastructure belongs in `internal/sys/*`.
+7. **`api/` holds no Go code and no frontends; `pkg/` holds only business-agnostic code
+   reusable across services** (here: `pkg/foundation/*`, shared by all `cmd/*`).
+   Service-specific infrastructure belongs in `internal/sys/*`.
 8. **Dev tools are pinned in `tools/` and built into `bin/`** — no reliance on globally
    installed generators/linters.
 
 ### Current state vs the standard
 
 This repository is still migrating toward the standard (it started from the Ardan Labs
-template). Known gaps: several services in one repo (`cmd/sales`, `cmd/auth`, `cmd/metrics`,
-CLIs `cmd/admin`, `cmd/logfmt`) instead of one service per repo; wiring/config inside big
+template). Known gaps: wiring/config inside big
 `cmd/*/main.go` and `cmd/{sales,auth}/build/` (no `internal/app`, `internal/config`); `zarf/`
 instead of `docker/`, `db/`, `docs/`, `scripts/`; embedded single-file darwin migrations in
-`internal/sys/db/migrate/sql/` instead of `db/migrations` up/down; `pkg/foundation/*` holding
-internal infrastructure; `api/frontends/admin`; legacy file names (`<x>bus.go`, `<x>db.go`,
+`internal/sys/db/migrate/sql/` instead of `db/migrations` up/down; `api/frontends/admin`; legacy file names (`<x>bus.go`, `<x>db.go`,
 `<x>app.go`, `model.go`); no `tools/`/`bin/`. The step-by-step plan is in
 `docs/MIGRATION_PLAN.md`. **New code must follow the standard; when touching legacy code,
 do not spread the legacy layout further.** Do not migrate a gap as a side effect of an

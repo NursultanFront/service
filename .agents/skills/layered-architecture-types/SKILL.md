@@ -92,7 +92,7 @@ representations, converter signatures, and any wrapper types.
 
 ## Foundation types are wrapped, not used directly (MUST)
 
-Foundation types (`pkg/foundation/*`, target `internal/sys/*`) must not appear directly in `internal/models/types/*`
+Foundation types (`pkg/foundation/*`) must not appear directly in `internal/models/types/*`
 aggregate types or in `internal/models/*` domain models. Define an `internal/models/types` wrapper
 type and convert via `toFoundation<T>` / `fromFoundation<T>` at the
 foundation-client boundary. A wrapper may store the foundation value in an

@@ -14,6 +14,10 @@
   **сохраняются** — меняется только структура.
 - Проверка после каждого шага минимум: `go vet ./...` и `make test-only`; для шагов,
   которые трогают сборку/запуск, ещё `make compose-build-up` (и `docker image prune -f`).
+- **Решения пользователя 2026-10-18** (по ревью и словам ментора Германа): шаг **(i)**
+  (разделение на репозитории) и шаг **(f)** (`pkg/foundation` → `internal/sys`) **отменены**:
+  сервисы остаются в одном репо как `cmd/<svc>`, `pkg/foundation` — общий код для всех
+  `cmd/*`. Добавлен шаг **(b2)**: `repository` перестаёт импортировать `usecase`.
 - Статус на 2026-10-18: ветка `refactor/go-standard-layout` уже частично перестроена
   (`internal/{handler,usecase,repository,models,service,sys,errors,generated}`,
   `api/protobuf`, `pkg/foundation`), изменения ещё не закоммичены.
@@ -24,7 +28,7 @@
 
 | Область | Сейчас (на диске) | Стандарт | Шаг |
 |---|---|---|---|
-| Сервисы в репо | `cmd/sales`, `cmd/auth`, `cmd/metrics` + CLI `cmd/admin`, `cmd/logfmt` | один сервис на репозиторий, `cmd/app/main.go` | (a), (i) |
+| Сервисы в репо | `cmd/sales`, `cmd/auth`, `cmd/metrics` + CLI `cmd/admin`, `cmd/logfmt` | остаются в одном репо как `cmd/<svc>` (решение 2026-10-18) | (a); (i) отменён |
 | `main.go` | толстые: `cmd/sales/main.go` ≈340 строк, `cmd/auth/main.go` ≈320, конфиг + wiring + запуск | тонкий `main`, вызывает `internal/app` | (a) |
 | Wiring / DI | `cmd/<svc>/main.go` + `cmd/{sales,auth}/build/*` (build-теги `crud`/`reporting`) | `internal/app/app.go`, руками | (a) |
 | Конфиг | `conf.Parse` внутри `main.go` | `internal/config/config.go` | (a) |
@@ -34,7 +38,7 @@
 | Модели | `internal/models/<x>.go`, `internal/models/types/*` | `internal/models/` | ✅ |
 | Имена файлов | `<x>bus.go`, `<x>db.go`, `<x>app.go`, `model.go`, `mux.go` | `<x>.go`, `<x>_repository.go`, `<x>_handler.go`, `dto.go`, `server.go` | (b) |
 | Ошибки | `internal/errors` (`errs.go`, `codes.go`): код + сообщение | внутренняя причина (лог) + внешнее сообщение (клиент) | (h) |
-| Инфраструктура | `internal/sys/*` + `pkg/foundation/*` (logger, web, otel, keystore, worker, docker) | всё внутреннее — `internal/sys/*`; `pkg/` только публичное | (f) |
+| Инфраструктура | `internal/sys/*` + `pkg/foundation/*` (logger, web, otel, keystore, worker, docker) | `pkg/foundation` остаётся общим кодом для `cmd/*` | (f) отменён |
 | Контракты | `api/protobuf/authapp.proto` ✅, но в `api/` лежит фронтенд `api/frontends/admin` | `api/` — только `.proto`/OpenAPI | (g) |
 | Деплой/инфра | `zarf/{docker,compose,k8s,helm,keys,prompts}` | `docker/`, `docker-compose.yaml` + `.env.example` в корне, `docs/`, `scripts/` | (c) |
 | Миграции БД | darwin, один файл `internal/sys/db/migrate/sql/migrate.sql` + `seed.sql` (embed) | `db/migrations/NNNNNN_*.up/down.sql`, `db/fixtures/*.sql` | (d) |
@@ -69,10 +73,11 @@
 
 ## Шаги
 
-Порядок по умолчанию: **(0) → (a) → (b) → (f) → (h) → (e) → (c) → (d) → (g) → (i)**.
+Порядок по умолчанию: **(0) ✅ → gRPC ✅ → (a) → (b) → (b2) → (h) → (e) → (c) → (d) → (g)**.
+(f) и (i) отменены 2026-10-18.
 (c), (d), (e), (g) мало связаны с Go-кодом и могут идти в другом порядке, но до (i).
 
-### (0) Зафиксировать текущую перестройку
+### (0) Зафиксировать текущую перестройку — ✅ выполнено (`17aa562b`, gRPC-фиксы — `464061d3`)
 
 - **Цель:** закоммитить уже сделанный перенос в `internal/*` как отдельный коммит, чтобы
   дальше двигаться маленькими шагами.
@@ -120,6 +125,18 @@
   Имена пакетов (`package userbus` и т.п.) — отдельный вопрос Q4.
 - **Проверка:** `go vet ./...`, `make test-only`.
 - **Зависит от:** (0); лучше после (a), чтобы не конфликтовать.
+
+### (b2) `repository` без импорта `usecase`
+
+- **Цель:** снизить связность (идея `deps.go`): `internal/repository/*` сейчас импортирует
+  `internal/usecase/*` ради `QueryFilter`, доменных ошибок (`ErrNotFound`, `ErrUniqueEmail`…)
+  и типа `Storer` в `NewWithTx`.
+- **Что:** `QueryFilter` и доменные ошибки → `internal/models` (или `internal/errors`);
+  `NewWithTx` репозитория возвращает свой конкретный тип, а приведение к интерфейсу —
+  в usecase; правило в AGENTS.md (*Architecture rules* п.3) меняется на «repository не
+  импортирует usecase».
+- **Проверка:** `go vet ./...`, `make test-only`, `rg 'internal/usecase' internal/repository` → пусто.
+- **Зависит от:** (b).
 
 ### (c) `zarf/` → `docker/`, `docs/`, `scripts/`; compose и `.env.example` в корень
 
@@ -171,7 +188,10 @@
 - **Проверка:** `make tools && make lint && make vuln-check`, `make test`.
 - **Зависит от:** —.
 
-### (f) `pkg/foundation/*` → `internal/sys/*`
+### (f) `pkg/foundation/*` → `internal/sys/*` — ❌ отменено 2026-10-18
+
+> Решение пользователя: `pkg/foundation` не привязан к бизнес-логике и переиспользуется всеми
+> `cmd/*`, поэтому остаётся в `pkg/`. Описание ниже сохранено для истории.
 
 - **Цель:** правило 2 стандарта — в `pkg/` только публичное.
 - **Что:** `logger`, `web`, `otel`, `keystore`, `worker`, `docker` → `internal/sys/<name>`;
@@ -211,7 +231,10 @@
 - **Проверка:** `make test-only` (с обновлёнными ожиданиями), ручная проверка 4xx/5xx.
 - **Зависит от:** (b).
 
-### (i) Разделение на отдельные репозитории: sales, auth, metrics
+### (i) Разделение на отдельные репозитории: sales, auth, metrics — ❌ отменено 2026-10-18
+
+> Решение пользователя (по словам ментора Германа): 2–3 тесно связанных сервиса живут в
+> одном репо как `cmd/<svc>`. Вопросы Q10–Q15 сняты. Описание ниже сохранено для истории.
 
 Последний и самый большой шаг. Каждый репозиторий — полный стандарт: `cmd/app/main.go`,
 `internal/app`, `internal/config`, свои `db/`, `docker/`, `tools/`, `makefile`,

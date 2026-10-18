@@ -57,8 +57,8 @@ disk today; "target" = where the standard wants it after the migration plan is d
 
 | Old (Ardan Labs) | Current | Target |
 |---|---|---|
-| `foundation/*` | `pkg/foundation/*` | `internal/sys/*` (logger, web, otel, keystore, worker, docker); `pkg/` only for public code |
-| `api/services/<svc>` | `cmd/<svc>` | one service per repo: `cmd/app/main.go` + `internal/app` + `internal/config` |
+| `foundation/*` | `pkg/foundation/*` | stays `pkg/foundation/*` — shared by all `cmd/*` (decision 2026-10-18) |
+| `api/services/<svc>` | `cmd/<svc>` | stays `cmd/<svc>` in this repo (decision 2026-10-18) + `internal/app/<svc>` + `internal/config/<svc>` |
 | `api/tooling/{admin,logfmt}` | `cmd/admin`, `cmd/logfmt` | see `docs/MIGRATION_PLAN.md`, step (i) |
 | `api/frontends/admin` | `api/frontends/admin` | out of `api/` (see `docs/MIGRATION_PLAN.md`, step (g)) |
 | `zarf/docker/*` | `zarf/docker/*` | `docker/` |
