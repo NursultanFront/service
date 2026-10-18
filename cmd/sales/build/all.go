@@ -4,15 +4,15 @@
 package build
 
 import (
-	"github.com/ardanlabs/service/internal/app/domain/auditapp"
-	"github.com/ardanlabs/service/internal/app/domain/checkapp"
-	"github.com/ardanlabs/service/internal/app/domain/homeapp"
-	"github.com/ardanlabs/service/internal/app/domain/productapp"
-	"github.com/ardanlabs/service/internal/app/domain/rawapp"
-	"github.com/ardanlabs/service/internal/app/domain/tranapp"
-	"github.com/ardanlabs/service/internal/app/domain/userapp"
-	"github.com/ardanlabs/service/internal/app/domain/vproductapp"
-	"github.com/ardanlabs/service/internal/app/sdk/mux"
+	auditapp "github.com/ardanlabs/service/internal/handler/http/audit"
+	checkapp "github.com/ardanlabs/service/internal/handler/http/check"
+	homeapp "github.com/ardanlabs/service/internal/handler/http/home"
+	productapp "github.com/ardanlabs/service/internal/handler/http/product"
+	rawapp "github.com/ardanlabs/service/internal/handler/http/raw"
+	mux "github.com/ardanlabs/service/internal/handler/http/server"
+	tranapp "github.com/ardanlabs/service/internal/handler/http/tran"
+	userapp "github.com/ardanlabs/service/internal/handler/http/user"
+	vproductapp "github.com/ardanlabs/service/internal/handler/http/vproduct"
 	"github.com/ardanlabs/service/pkg/foundation/web"
 )
 

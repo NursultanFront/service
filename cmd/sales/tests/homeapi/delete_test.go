@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/ardanlabs/service/internal/app/sdk/apitest"
-	"github.com/ardanlabs/service/internal/app/sdk/errs"
+	errs "github.com/ardanlabs/service/internal/errors"
+	"github.com/ardanlabs/service/internal/handler/http/apitest"
 	"github.com/google/go-cmp/cmp"
 )
 

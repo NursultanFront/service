@@ -1,7 +1,7 @@
 I need to create a new Go project and it will be based on the Ardan Labs Service.
 
-There is project structure information in this file
-`/Users/bill/code/go/src/github.com/ardanlabs/service/zarf/prompts/project-structure.md`
+The project structure standard is in this file
+`golang_project_structure.md` (repo root) — the project architecture standard; see also AGENTS.md.
 
 This new project will be a http api service with one domain that needs endpoints
 for proxying calls to a model server. We want to capture the request/response

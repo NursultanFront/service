@@ -16,8 +16,10 @@ You can ask the user for their name to make the interaction more natural.
 - After a user answers your questions, you check if everything was answered or if there are items still left to handle.
 - You are not eager to please, you are thoughtful, skeptical, and thorough.
 - You do not leave anything to chance. You do not guess. You always ask the user anything that's relevant concisely.
-- Do not automatically commit or perform git changes, you will refuse to do so if the user asks you to do it. You will
-  give the commands to the user and let them run. This is not negotiable.
+- You may run `git commit` and `git push` in this repository as part of a task the user assigned to you. Before every
+  commit, show `git status` / `git diff --stat` of what is being committed, and never add junk (binaries, `.env`,
+  local-only files). Never force-push, rebase, or otherwise rewrite history unless the user explicitly asks for that
+  specific action.
 - You first plan a change with the user and only when everything is cleared between you and the user, then proceed to
   make the changes. This depends on how much of a change the user asks. Small changes, e.g., direct edits may skip this
   step.
@@ -51,25 +53,119 @@ one task is done.
 - You can run the full test suite using `make test-only` (runs all tests via `go test ./...`).
 - `make test` additionally runs `lint` and `vuln-check` after the tests. You should only run the full suite at the end
   of a big feature completion. You will ask the user about doing this first.
-- Layer conversions (App ↔ Business ↔ Storage). Primitive types live at the
-  edges (API JSON request/response structs and DB row structs); strong types from
-  the `business/types/*` subpackages live only in the Business layer. Every crossing
+- Layer conversions (Handler ↔ Usecase ↔ Repository). Primitive types live at the
+  edges (API JSON request/response structs in `internal/handler/*` and DB row structs in
+  `internal/repository/*`); strong types from the `internal/models/types/*` subpackages and
+  domain entities in `internal/models/*` live in the Usecase/Models layer. Every crossing
   goes through a named converter —
   never assign across a boundary directly:
-    - App → Business: `toBus<Type>` (parses + validates, returns `errs.FieldErrors`)
-    - Business → App: `fromBus<Type>Response` (converts strong → primitive explicitly)
-    - Business → Storage: `toDB<Type>`
-    - Storage → Business: `toBus<Type>` (parses native → strong, returns error)
+    - Handler → Usecase: `toBus<Type>` (parses + validates, returns `errs.FieldErrors`)
+    - Usecase → Handler: `fromBus<Type>Response` / `toApp<Type>` (converts strong → primitive explicitly)
+    - Usecase → Repository: `toDB<Type>`
+    - Repository → Usecase: `toBus<Type>` (parses native → strong, returns error)
 
-  Before writing, editing, or auditing any `internal/app/*`, `internal/business/domain/*`, or
-  `.../stores/*db` Go file, follow the `layered-architecture-types` skill — it holds the
-  full type-boundary rules, converter table, examples, and a conformance checklist.
-- Business-layer extensions (the `ExtBusiness`/`Extension` decorator pattern). Cross-cutting
-  concerns (OTEL, logging, metrics, caching, auth) wrap the core `Business` without
-  modifying it. Before adding a concern to a business domain, creating files under
-  `internal/business/domain/*/extensions/*`, or adding the `ExtBusiness`/`Extension` seam to a
-  `*bus` package, follow the `business-layer-extensions` skill — it holds the three-piece
-  pattern (seam, extension, wiring), wrap-order rules, reference examples, and a checklist.
+  Before writing, editing, or auditing any `internal/handler/*`, `internal/usecase/*`,
+  `internal/models/*`, or `internal/repository/*` Go file, follow the
+  `layered-architecture-types` skill — it holds the full type-boundary rules, converter
+  table, examples, and a conformance checklist.
+- Usecase-layer extensions (the `ExtBusiness`/`Extension` decorator pattern). Cross-cutting
+  concerns (OTEL, logging, metrics, caching, auth) wrap the core `Business` in
+  `internal/usecase/*` without modifying it. Before adding a concern to a usecase domain,
+  creating files under `internal/usecase/*/extensions/*`, or adding the
+  `ExtBusiness`/`Extension` seam to a usecase package, follow the
+  `business-layer-extensions` skill — it holds the three-piece pattern (seam, extension,
+  wiring), wrap-order rules, reference examples, and a checklist.
+
+## Project Structure & Architecture Standard (MANDATORY)
+
+**`golang_project_structure.md` (repo root) is the project's architecture standard**, adopted
+2026-10-18. It is the source of truth for the repository layout, layers, package and file
+naming. Read it before creating, moving, or reviewing any package. **Method 1 (Layered
+Architecture / package by layer)** is the chosen variant — do not introduce Method 2.
+
+Precedence when documents disagree:
+1. **Structure, folders, layers, file naming** → `golang_project_structure.md` wins.
+2. **Code patterns inside a layer** (strong types in `internal/models/types/*`, named
+   converters, `ExtBusiness`/`Extension` decorators, branching style) → the Coding Rules above
+   and the `.agents/skills/*` skills win. The standard's code samples are simplified
+   illustrations, not a ban on these patterns.
+3. Anything else that is unclear → ask the user.
+
+### Target layout (one service per repository)
+
+```text
+project-root/
+├── api/                  # Language-neutral contracts ONLY: protobuf/*.proto, swagger/openapi
+├── bin/                  # Built binaries + dev tools built from tools/ (not committed)
+├── cmd/
+│   ├── app/main.go       # The ONE service entry point: init ctx, call internal/app. No logic.
+│   └── cron_<name>/      # Optional: separate entry points for periodic jobs
+├── db/
+│   ├── migrations/       # SQL migrations, NNNNNN_<name>.up.sql / .down.sql
+│   └── fixtures/         # Idempotent local seed data (INSERT ... ON CONFLICT DO NOTHING)
+├── docker/               # Dockerfiles and container configs
+├── docs/                 # Project docs, localrun.md, AI instructions
+├── internal/
+│   ├── app/              # Manual DI: build every dependency, start servers/workers
+│   ├── config/           # Config from ENV/flags (technical parameters only)
+│   ├── errors/           # Errors with internal cause (logs) + safe external message (client)
+│   ├── generated/        # Generated code (protobuf/gRPC, OpenAPI) — NEVER edit by hand
+│   ├── handler/          # Layer 1: transport (http/, grpc/) — server.go, dto.go, <entity>_handler.go
+│   ├── usecase/<entity>/ # Layer 2: business logic — deps.go + <entity>.go
+│   ├── repository/<entity>/ # Layer 3: DB access — <entity>_repository.go (+ query.go)
+│   ├── models/           # Layer 4: business entities (+ models/types/* strong value types)
+│   ├── service/          # Clients for external services (non-DB): S3, other APIs, authclient
+│   ├── sys/              # Infrastructure without business logic: db, logger, metrics, circuit_breaker
+│   └── workers/          # Background periodic processes
+├── pkg/                  # PUBLIC Go code meant to be imported by other services only
+├── scripts/              # Helper shell scripts (codegen, CI/CD)
+├── tools/                # Own go.mod + tools.go pinning dev tools (mockery, golangci-lint, migrate, gofumpt)
+├── .env.example
+├── docker-compose.yaml
+└── Makefile
+```
+
+### Architecture rules (MUST)
+
+1. **Thin `main`.** `cmd/*/main.go` only creates the context and calls `internal/app`. Config
+   lives in `internal/config`, all wiring (constructors, extensions, servers) in `internal/app`.
+2. **Handler → Usecase → Repository, nothing else.**
+   - `handler`: transport + *technical* validation only (required fields, `id > 0`, format,
+     cap `limit` — max 300), DTO ↔ `models` conversion, calls `usecase`.
+   - `usecase`: ALL business logic (state checks, permissions, calculations, orchestration of
+     repositories and `service` clients). Keep one struct per entity with all its scenarios —
+     no package per function.
+   - `repository`: SQL, (de)serialization for the DB, query timing metrics. **Zero business
+     logic** — it stores/reads exactly what it is given.
+3. **Dependency Inversion via `deps.go`.** Interfaces are declared by the consumer in
+   `internal/usecase/<entity>/deps.go`, never next to the implementation. `usecase` never
+   depends on a concrete repository or provider type. (A repository importing its usecase
+   package for shared filters/errors is allowed — the dependency points inward.)
+4. **`models` vs `dto`.** `models` are internal entities (never a raw password — use a hash;
+   use a reduced struct such as `UserShortInfo` for restricted views). DTOs (`json`/`db` tags)
+   exist only at the edges: `handler` and `repository`.
+5. **Errors.** Never return raw DB/infra errors to clients. Every error carries an internal
+   cause (logged) and a safe human-readable external message (returned over HTTP/gRPC).
+6. **No `utils/` package, no `google/wire`.** Helpers live next to their domain or in a
+   meaningful `sys/`/`pkg/` package; dependencies are wired by hand in `internal/app`.
+7. **`api/` holds no Go code and no frontends; `pkg/` holds only code intended for other
+   services.** Internal infrastructure belongs in `internal/sys/*`.
+8. **Dev tools are pinned in `tools/` and built into `bin/`** — no reliance on globally
+   installed generators/linters.
+
+### Current state vs the standard
+
+This repository is still migrating toward the standard (it started from the Ardan Labs
+template). Known gaps: several services in one repo (`cmd/sales`, `cmd/auth`, `cmd/metrics`,
+CLIs `cmd/admin`, `cmd/logfmt`) instead of one service per repo; wiring/config inside big
+`cmd/*/main.go` and `cmd/{sales,auth}/build/` (no `internal/app`, `internal/config`); `zarf/`
+instead of `docker/`, `db/`, `docs/`, `scripts/`; embedded single-file darwin migrations in
+`internal/sys/db/migrate/sql/` instead of `db/migrations` up/down; `pkg/foundation/*` holding
+internal infrastructure; `api/frontends/admin`; legacy file names (`<x>bus.go`, `<x>db.go`,
+`<x>app.go`, `model.go`); no `tools/`/`bin/`. The step-by-step plan is in
+`docs/MIGRATION_PLAN.md`. **New code must follow the standard; when touching legacy code,
+do not spread the legacy layout further.** Do not migrate a gap as a side effect of an
+unrelated task — migration steps are done deliberately, one at a time.
 
 ## Local Development Workflow
 

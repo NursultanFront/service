@@ -3,7 +3,7 @@ package user_test
 import (
 	"testing"
 
-	"github.com/ardanlabs/service/internal/app/sdk/apitest"
+	"github.com/ardanlabs/service/internal/handler/http/apitest"
 )
 
 func Test_User(t *testing.T) {

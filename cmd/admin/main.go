@@ -10,7 +10,7 @@ import (
 
 	"github.com/ardanlabs/conf/v3"
 	"github.com/ardanlabs/service/cmd/admin/commands"
-	"github.com/ardanlabs/service/internal/business/sdk/sqldb"
+	sqldb "github.com/ardanlabs/service/internal/sys/db"
 	"github.com/ardanlabs/service/pkg/foundation/logger"
 	"github.com/google/uuid"
 )

@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ardanlabs/service/internal/app/domain/productapp"
-	"github.com/ardanlabs/service/internal/app/sdk/apitest"
-	"github.com/ardanlabs/service/internal/app/sdk/errs"
+	errs "github.com/ardanlabs/service/internal/errors"
+	"github.com/ardanlabs/service/internal/handler/http/apitest"
+	productapp "github.com/ardanlabs/service/internal/handler/http/product"
 	"github.com/google/go-cmp/cmp"
 )
 

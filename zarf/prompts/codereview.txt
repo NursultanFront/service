@@ -1,4 +1,4 @@
-- Review all the code app/sdk/auth package.
+- Review all the code in the internal/sys/auth package.
 - Look for any bugs.
 - Look for any code that can be written using better Go idioms.
 - Suggest changes in the code for my review.

@@ -2,9 +2,9 @@
 package build
 
 import (
-	"github.com/ardanlabs/service/internal/app/domain/authapp"
-	"github.com/ardanlabs/service/internal/app/domain/checkapp"
-	"github.com/ardanlabs/service/internal/app/sdk/mux"
+	authapp "github.com/ardanlabs/service/internal/handler/http/auth"
+	checkapp "github.com/ardanlabs/service/internal/handler/http/check"
+	mux "github.com/ardanlabs/service/internal/handler/http/server"
 	"github.com/ardanlabs/service/pkg/foundation/web"
 )
 

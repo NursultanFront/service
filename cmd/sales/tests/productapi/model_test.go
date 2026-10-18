@@ -3,11 +3,11 @@ package product_test
 import (
 	"time"
 
-	"github.com/ardanlabs/service/internal/app/domain/productapp"
-	"github.com/ardanlabs/service/internal/business/domain/productbus"
+	productapp "github.com/ardanlabs/service/internal/handler/http/product"
+	"github.com/ardanlabs/service/internal/models"
 )
 
-func toAppProduct(prd productbus.Product) productapp.Product {
+func toAppProduct(prd models.Product) productapp.Product {
 	return productapp.Product{
 		ID:          prd.ID.String(),
 		UserID:      prd.UserID.String(),
@@ -19,12 +19,12 @@ func toAppProduct(prd productbus.Product) productapp.Product {
 	}
 }
 
-func toAppProductPtr(prd productbus.Product) *productapp.Product {
+func toAppProductPtr(prd models.Product) *productapp.Product {
 	appPrd := toAppProduct(prd)
 	return &appPrd
 }
 
-func toAppProducts(prds []productbus.Product) []productapp.Product {
+func toAppProducts(prds []models.Product) []productapp.Product {
 	items := make([]productapp.Product, len(prds))
 	for i, prd := range prds {
 		items[i] = toAppProduct(prd)

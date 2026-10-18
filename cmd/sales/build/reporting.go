@@ -3,9 +3,9 @@
 package build
 
 import (
-	"github.com/ardanlabs/service/internal/app/domain/checkapp"
-	"github.com/ardanlabs/service/internal/app/domain/vproductapp"
-	"github.com/ardanlabs/service/internal/app/sdk/mux"
+	checkapp "github.com/ardanlabs/service/internal/handler/http/check"
+	mux "github.com/ardanlabs/service/internal/handler/http/server"
+	vproductapp "github.com/ardanlabs/service/internal/handler/http/vproduct"
 	"github.com/ardanlabs/service/pkg/foundation/web"
 )
 

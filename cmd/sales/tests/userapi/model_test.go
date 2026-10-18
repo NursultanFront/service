@@ -3,12 +3,12 @@ package user_test
 import (
 	"time"
 
-	"github.com/ardanlabs/service/internal/app/domain/userapp"
-	"github.com/ardanlabs/service/internal/business/domain/userbus"
-	"github.com/ardanlabs/service/internal/business/types/role"
+	userapp "github.com/ardanlabs/service/internal/handler/http/user"
+	"github.com/ardanlabs/service/internal/models"
+	"github.com/ardanlabs/service/internal/models/types/role"
 )
 
-func toAppUser(bus userbus.User) userapp.User {
+func toAppUser(bus models.User) userapp.User {
 	return userapp.User{
 		ID:          bus.ID.String(),
 		Name:        bus.Name.String(),
@@ -21,7 +21,7 @@ func toAppUser(bus userbus.User) userapp.User {
 	}
 }
 
-func toAppUsers(users []userbus.User) []userapp.User {
+func toAppUsers(users []models.User) []userapp.User {
 	items := make([]userapp.User, len(users))
 	for i, usr := range users {
 		items[i] = toAppUser(usr)
@@ -30,7 +30,7 @@ func toAppUsers(users []userbus.User) []userapp.User {
 	return items
 }
 
-func toAppUserPtr(bus userbus.User) *userapp.User {
+func toAppUserPtr(bus models.User) *userapp.User {
 	appUsr := toAppUser(bus)
 	return &appUsr
 }

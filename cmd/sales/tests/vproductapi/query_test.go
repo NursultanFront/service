@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"sort"
 
-	"github.com/ardanlabs/service/internal/app/domain/vproductapp"
-	"github.com/ardanlabs/service/internal/app/sdk/apitest"
-	"github.com/ardanlabs/service/internal/app/sdk/errs"
-	"github.com/ardanlabs/service/internal/app/sdk/query"
+	errs "github.com/ardanlabs/service/internal/errors"
+	"github.com/ardanlabs/service/internal/handler/http/apitest"
+	"github.com/ardanlabs/service/internal/handler/http/query"
+	vproductapp "github.com/ardanlabs/service/internal/handler/http/vproduct"
 	"github.com/google/go-cmp/cmp"
 )
 

@@ -3,7 +3,7 @@ package home_test
 import (
 	"testing"
 
-	"github.com/ardanlabs/service/internal/app/sdk/apitest"
+	"github.com/ardanlabs/service/internal/handler/http/apitest"
 )
 
 func Test_Home(t *testing.T) {

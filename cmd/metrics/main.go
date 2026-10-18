@@ -16,7 +16,7 @@ import (
 	"github.com/ardanlabs/service/cmd/metrics/publisher"
 	expvarsrv "github.com/ardanlabs/service/cmd/metrics/publisher/expvar"
 	prometheussrv "github.com/ardanlabs/service/cmd/metrics/publisher/prometheus"
-	"github.com/ardanlabs/service/internal/app/sdk/debug"
+	"github.com/ardanlabs/service/internal/sys/debug"
 	"github.com/ardanlabs/service/pkg/foundation/logger"
 )
 

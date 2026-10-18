@@ -7,10 +7,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/ardanlabs/service/internal/business/domain/userbus"
-	"github.com/ardanlabs/service/internal/business/domain/userbus/stores/userdb"
-	"github.com/ardanlabs/service/internal/business/sdk/page"
-	"github.com/ardanlabs/service/internal/business/sdk/sqldb"
+	userdb "github.com/ardanlabs/service/internal/repository/user"
+	sqldb "github.com/ardanlabs/service/internal/sys/db"
+	"github.com/ardanlabs/service/internal/sys/page"
+	userbus "github.com/ardanlabs/service/internal/usecase/user"
 	"github.com/ardanlabs/service/pkg/foundation/logger"
 )
 

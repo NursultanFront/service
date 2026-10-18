@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ardanlabs/service/internal/app/sdk/apitest"
-	"github.com/ardanlabs/service/internal/app/sdk/auth"
-	"github.com/ardanlabs/service/internal/business/domain/auditbus"
-	"github.com/ardanlabs/service/internal/business/domain/userbus"
-	"github.com/ardanlabs/service/internal/business/sdk/dbtest"
-	"github.com/ardanlabs/service/internal/business/types/domain"
-	"github.com/ardanlabs/service/internal/business/types/role"
+	"github.com/ardanlabs/service/internal/handler/http/apitest"
+	"github.com/ardanlabs/service/internal/models/types/domain"
+	"github.com/ardanlabs/service/internal/models/types/role"
+	"github.com/ardanlabs/service/internal/sys/auth"
+	"github.com/ardanlabs/service/internal/sys/dbtest"
+	auditbus "github.com/ardanlabs/service/internal/usecase/audit"
+	userbus "github.com/ardanlabs/service/internal/usecase/user"
 )
 
 func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, error) {

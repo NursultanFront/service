@@ -5,10 +5,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ardanlabs/service/internal/app/domain/auditapp"
-	"github.com/ardanlabs/service/internal/app/sdk/apitest"
-	"github.com/ardanlabs/service/internal/app/sdk/errs"
-	"github.com/ardanlabs/service/internal/app/sdk/query"
+	errs "github.com/ardanlabs/service/internal/errors"
+	"github.com/ardanlabs/service/internal/handler/http/apitest"
+	auditapp "github.com/ardanlabs/service/internal/handler/http/audit"
+	"github.com/ardanlabs/service/internal/handler/http/query"
 	"github.com/google/go-cmp/cmp"
 )
 

@@ -3,12 +3,11 @@ package vproduct_test
 import (
 	"time"
 
-	"github.com/ardanlabs/service/internal/app/domain/vproductapp"
-	"github.com/ardanlabs/service/internal/business/domain/productbus"
-	"github.com/ardanlabs/service/internal/business/domain/userbus"
+	vproductapp "github.com/ardanlabs/service/internal/handler/http/vproduct"
+	"github.com/ardanlabs/service/internal/models"
 )
 
-func toAppVProduct(usr userbus.User, prd productbus.Product) vproductapp.Product {
+func toAppVProduct(usr models.User, prd models.Product) vproductapp.Product {
 	return vproductapp.Product{
 		ID:          prd.ID.String(),
 		UserID:      prd.UserID.String(),
@@ -21,7 +20,7 @@ func toAppVProduct(usr userbus.User, prd productbus.Product) vproductapp.Product
 	}
 }
 
-func toAppVProducts(usr userbus.User, prds []productbus.Product) []vproductapp.Product {
+func toAppVProducts(usr models.User, prds []models.Product) []vproductapp.Product {
 	items := make([]vproductapp.Product, len(prds))
 	for i, prd := range prds {
 		items[i] = toAppVProduct(usr, prd)

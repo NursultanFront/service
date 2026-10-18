@@ -1,11 +1,11 @@
 ---
 name: business-layer-extensions
-description: Use when adding a cross-cutting concern (OTEL tracing, logging, metrics, caching, auth) to a business domain, creating files under business/domain/*/extensions/*, or adding the extension seam (ExtBusiness/Extension) to a *bus package.
+description: Use when adding a cross-cutting concern (OTEL tracing, logging, metrics, caching, auth) to a usecase domain, creating files under internal/usecase/*/extensions/*, or adding the extension seam (ExtBusiness/Extension) to a usecase package.
 ---
 
 # Business Layer Extensions
 
-The business layer layers cross-cutting concerns onto core domain logic with a
+The usecase layer layers cross-cutting concerns onto core domain logic with a
 **decorator pattern**: each extension wraps an `ExtBusiness` and delegates to it.
 **Wrap, never modify the core `Business`.** An extension that adds tracing to one
 method must still implement every other method as a plain pass-through.
@@ -15,15 +15,17 @@ It comes in three coordinated pieces: the **seam** on the bus (Piece 1), the
 
 ## Checklist
 
-1. **Seam exists?** Confirm the target `<x>bus.go` has `ExtBusiness`, `Extension`,
+1. **Seam exists?** Confirm the target `internal/usecase/<x>/<x>bus.go` (target name `<x>.go`) has `ExtBusiness`, `Extension`,
    and the reverse-apply loop in `NewBusiness`. If not, add them (piece 1).
-2. **Create** `extensions/<x><concern>/<x><concern>.go` (piece 2).
+2. **Create** `internal/usecase/<x>/extensions/<x><concern>/<x><concern>.go` (piece 2).
 3. **Implement EVERY `ExtBusiness` method** — wrap the relevant ones, pass the rest
    straight through to `ext.bus`. Missing one fails to satisfy the interface and
    won't compile.
-4. **Wire** into `api/services/*/main.go` in the right order (piece 3).
+4. **Wire** into `internal/app/app.go` in the right order (piece 3). Until migration step
+   (a) of `docs/MIGRATION_PLAN.md` lands, wiring still lives in `cmd/<svc>/main.go` /
+   `cmd/<svc>/build/*` — wire there, but do not add new wiring anywhere else.
 
-## Piece 1 — the seam (in `<x>bus/<x>bus.go`)
+## Piece 1 — the seam (in `internal/usecase/<x>/<x>bus.go`, target name `<x>.go`)
 
 ```go
 // ExtBusiness lists every public method an extension can wrap.
@@ -47,7 +49,7 @@ func NewBusiness(log *logger.Logger, delegate *delegate.Delegate, storer Storer,
 }
 ```
 
-## Piece 2 — the extension (`extensions/<x><concern>/<x><concern>.go`)
+## Piece 2 — the extension (`internal/usecase/<x>/extensions/<x><concern>/<x><concern>.go`)
 
 Package name is `<x><concern>` (e.g. `widgetotel`, `widgetlog`). Struct holds the
 wrapped bus plus any deps; `NewExtension` returns the closure.
@@ -118,7 +120,13 @@ func (ext *Extension) Create(ctx context.Context, input widgetbus.CreateWidgetIn
 }
 ```
 
-## Piece 3 — wiring (`api/services/*/main.go`)
+## Piece 3 — wiring (`internal/app/app.go`)
+
+Per `golang_project_structure.md`, all dependency wiring is done by hand in
+`internal/app/app.go` (no `google/wire`); `cmd/app/main.go` only calls `app.Run(ctx)`.
+**Current state:** `internal/app` does not exist yet — wiring lives in
+`cmd/<svc>/main.go` and `cmd/{sales,auth}/build/*` until the migration is done. The
+construction code below is the same in either place.
 
 Construct each extension, then pass them as the trailing variadic args to `NewBusiness`
 in outermost-first order:
