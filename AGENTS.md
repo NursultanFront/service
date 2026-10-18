@@ -164,8 +164,7 @@ project-root/
 ### Current state vs the standard
 
 This repository is still migrating toward the standard (it started from the Ardan Labs
-template). Known gaps: wiring/config inside big
-`cmd/*/main.go` and `cmd/{sales,auth}/build/` (no `internal/app`, `internal/config`); `zarf/`
+template). Known gaps: `zarf/`
 instead of `docker/`, `db/`, `docs/`, `scripts/`; embedded single-file darwin migrations in
 `internal/sys/db/migrate/sql/` instead of `db/migrations` up/down; `api/frontends/admin`; legacy file names (`<x>bus.go`, `<x>db.go`,
 `<x>app.go`, `model.go`); no `tools/`/`bin/`. The step-by-step plan is in

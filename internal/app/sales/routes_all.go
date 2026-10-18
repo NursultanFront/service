@@ -1,7 +1,6 @@
 //go:build !crud && !reporting
 
-// Package build manages different build options.
-package build
+package sales
 
 import (
 	auditapp "github.com/ardanlabs/service/internal/handler/http/audit"

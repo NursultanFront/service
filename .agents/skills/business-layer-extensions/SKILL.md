@@ -21,9 +21,7 @@ It comes in three coordinated pieces: the **seam** on the bus (Piece 1), the
 3. **Implement EVERY `ExtBusiness` method** — wrap the relevant ones, pass the rest
    straight through to `ext.bus`. Missing one fails to satisfy the interface and
    won't compile.
-4. **Wire** into `internal/app/app.go` in the right order (piece 3). Until migration step
-   (a) of `docs/MIGRATION_PLAN.md` lands, wiring still lives in `cmd/<svc>/main.go` /
-   `cmd/<svc>/build/*` — wire there, but do not add new wiring anywhere else.
+4. **Wire** into `internal/app/<svc>/app.go` in the right order (piece 3).
 
 ## Piece 1 — the seam (in `internal/usecase/<x>/<x>bus.go`, target name `<x>.go`)
 
@@ -120,13 +118,12 @@ func (ext *Extension) Create(ctx context.Context, input widgetbus.CreateWidgetIn
 }
 ```
 
-## Piece 3 — wiring (`internal/app/app.go`)
+## Piece 3 — wiring (`internal/app/<svc>/app.go`)
 
 Per `golang_project_structure.md`, all dependency wiring is done by hand in
-`internal/app/app.go` (no `google/wire`); `cmd/app/main.go` only calls `app.Run(ctx)`.
-**Current state:** `internal/app` does not exist yet — wiring lives in
-`cmd/<svc>/main.go` and `cmd/{sales,auth}/build/*` until the migration is done. The
-construction code below is the same in either place.
+`internal/app` (no `google/wire`). This repo keeps several services, so each has its own
+package: `internal/app/<svc>/app.go` (`sales`, `auth`, `metrics`), with route sets in
+`internal/app/<svc>/routes*.go`; `cmd/<svc>/main.go` only calls `<svc>app.Run(ctx, tag)`.
 
 Construct each extension, then pass them as the trailing variadic args to `NewBusiness`
 in outermost-first order:

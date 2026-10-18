@@ -1,6 +1,6 @@
 //go:build reporting
 
-package build
+package sales
 
 import (
 	checkapp "github.com/ardanlabs/service/internal/handler/http/check"

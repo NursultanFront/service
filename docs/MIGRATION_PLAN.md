@@ -29,9 +29,9 @@
 | Область | Сейчас (на диске) | Стандарт | Шаг |
 |---|---|---|---|
 | Сервисы в репо | `cmd/sales`, `cmd/auth`, `cmd/metrics` + CLI `cmd/admin`, `cmd/logfmt` | остаются в одном репо как `cmd/<svc>` (решение 2026-10-18) | (a); (i) отменён |
-| `main.go` | толстые: `cmd/sales/main.go` ≈340 строк, `cmd/auth/main.go` ≈320, конфиг + wiring + запуск | тонкий `main`, вызывает `internal/app` | (a) |
-| Wiring / DI | `cmd/<svc>/main.go` + `cmd/{sales,auth}/build/*` (build-теги `crud`/`reporting`) | `internal/app/app.go`, руками | (a) |
-| Конфиг | `conf.Parse` внутри `main.go` | `internal/config/config.go` | (a) |
+| `main.go` | ✅ тонкие, вызывают `internal/app/<svc>.Run` | тонкий `main`, вызывает `internal/app` | (a) ✅ |
+| Wiring / DI | ✅ `internal/app/{sales,auth,metrics}` (+ `routes*.go` с тегами `crud`/`reporting`) | `internal/app/app.go`, руками | (a) ✅ |
+| Конфиг | ✅ `internal/config/{sales,auth,metrics}/config.go` | `internal/config/config.go` | (a) ✅ |
 | Транспорт | `internal/handler/http/<x>/`, `internal/handler/grpc/auth/` | `internal/handler/{http,grpc}/` | ✅ (имена файлов — (b)) |
 | Бизнес-логика | `internal/usecase/<x>/` (+ `deps.go` уже есть) | `internal/usecase/<entity>/deps.go + <entity>.go` | ✅ (имена файлов — (b)) |
 | БД-слой | `internal/repository/<x>/` | `internal/repository/<entity>/<entity>_repository.go` | ✅ (имена файлов — (b)) |
@@ -86,7 +86,13 @@
 - **Проверка:** `go vet ./...`, `make test-only`, `make compose-build-up`.
 - **Зависит от:** —.
 
-### (a) `internal/config` + `internal/app` для каждого сервиса, тонкий `cmd/*/main.go`
+### (a) `internal/config` + `internal/app` для каждого сервиса, тонкий `cmd/*/main.go` — ✅ выполнено 2026-10-18
+
+> Решения: Q1 — `internal/app/<svc>` + `internal/config/<svc>`; Q2 — build-теги сохранены
+> (`internal/app/sales/routes_{all,crud,reporting}.go`); охват — sales, auth, metrics (CLI
+> `admin`/`logfmt` не трогали). `//go:embed static` остался в `cmd/sales` и передаётся в `Run`.
+> Остаток: `cmd/metrics/{collector,publisher}` — код сервиса внутри `cmd/`, кандидат на перенос в
+> `internal/` отдельным шагом.
 
 - **Цель:** правило 1 стандарта — `main` только создаёт контекст и вызывает `app.Run(ctx)`.
 - **Что переносится:**
@@ -224,6 +230,9 @@
   `message` для клиента; `mid/errors.go` логирует причину и отдаёт только сообщение;
   gRPC-хендлер мапит в `status.Error(code, message)`; аудит мест, где в ответ уходит
   `err.Error()` из БД/инфраструктуры.
+- **Найдено при (a):** `mid.Authorize` отдаёт любой отказ авторизации как 401 `unauthenticated` и
+  кладёт в ответ внутренний текст (`claims[[USER]] rule[rule_admin_only]`); должно быть 403 с
+  безопасным сообщением (касается и HTTP-, и gRPC-режима authclient).
 - **Затрагивает:** `internal/errors/{errs.go,codes.go}`, `internal/handler/http/mid/errors.go`,
   все `internal/handler/http/*`, `internal/handler/grpc/auth`, тесты `cmd/sales/tests/*`.
 - **Риски:** **меняется контракт ответов** — фронтенд и тесты, сравнивающие текст ошибки;

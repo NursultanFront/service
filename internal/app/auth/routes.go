@@ -1,5 +1,4 @@
-// Package build manages different build options.
-package build
+package auth
 
 import (
 	authapp "github.com/ardanlabs/service/internal/handler/http/auth"
