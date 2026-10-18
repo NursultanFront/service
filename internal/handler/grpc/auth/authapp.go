@@ -4,7 +4,6 @@ package auth
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math"
 	"net"
 	"time"
@@ -54,10 +53,11 @@ func (a *App) Token(ctx context.Context, req *authpb.TokenRequest) (*authpb.Toke
 		return nil, status.Error(codes.InvalidArgument, "kid is required")
 	}
 
-	// For simplicity, we're using a dummy claims structure here.
-	// In a real implementation, you would extract claims from the context or request.
-	claims := auth.Claims{
-		Roles: []string{"user"},
+	// NOTE(AI): the authInterceptor validated the Basic auth credentials and
+	// stored the user's real claims (subject, roles, expiry), same as HTTP.
+	claims := mid.GetClaims(ctx)
+	if claims.Subject == "" {
+		return nil, status.Error(codes.Unauthenticated, "no claims")
 	}
 
 	token, err := a.auth.GenerateToken(kid, claims)
@@ -88,10 +88,24 @@ func (a *App) Authenticate(ctx context.Context, req *authpb.AuthenticateRequest)
 		return nil, status.Error(codes.Unauthenticated, "invalid token")
 	}
 
+	// NOTE(AI): the client reads the full Claims message (roles included) and
+	// forwards it to Authorize, so it must be populated here.
+	cb := authpb.Claims_builder{
+		Id:        new(claims.ID),
+		Issuer:    new(claims.Issuer),
+		Subject:   new(claims.Subject),
+		Audience:  claims.Audience,
+		ExpiresAt: new(ndToInt64(claims.ExpiresAt)),
+		NotBefore: new(ndToInt64(claims.NotBefore)),
+		IssuedAt:  new(ndToInt64(claims.IssuedAt)),
+		Roles:     claims.Roles,
+	}
+
 	arb := authpb.AuthenticateResponse_builder{
 		UserId:  new(claims.Subject),
 		Subject: new(claims.Subject),
 		Roles:   claims.Roles,
+		Claims:  cb.Build(),
 	}
 
 	return arb.Build(), nil
@@ -130,7 +144,10 @@ func (a *App) Authorize(ctx context.Context, req *authpb.AuthorizeRequest) (*aut
 
 	err = a.auth.Authorize(ctx, claims, userID, reqRule)
 	if err != nil {
-		if errors.Is(err, auth.ErrForbidden) {
+		// NOTE(AI): a policy denial is wrapped in ErrInvalidAuthzOPA
+		// (ErrForbidden is never returned), so it was reported as Internal.
+		if errors.Is(err, auth.ErrInvalidAuthzOPA) {
+			a.log.Info(ctx, "authorize", "status", "denied", "err", err)
 			return nil, status.Error(codes.PermissionDenied, "not authorized")
 		}
 
@@ -144,57 +161,54 @@ func (a *App) Authorize(ctx context.Context, req *authpb.AuthorizeRequest) (*aut
 // =============================================================================
 
 func (a *App) authInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+	// NOTE(AI): match the generated full method names; the proto package is
+	// grpcauthapp, so the old "/auth.Auth/..." literals never matched and the
+	// interceptor was a no-op. Authenticate is intentionally not intercepted:
+	// the token arrives in the request body and the handler validates it.
 	switch info.FullMethod {
-	case "/auth.Auth/Token":
+	case authpb.Auth_Token_FullMethodName:
 		return a.authorize(ctx, req, info, handler)
-
-	case "/auth.Auth/Authenticate":
-		return a.authenticate(ctx, req, info, handler)
 
 	default:
 		return handler(ctx, req)
 	}
 }
 
+// NOTE(AI): errors are returned as gRPC status errors so clients see
+// codes.Unauthenticated instead of codes.Unknown.
 func (a *App) authorize(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return nil, fmt.Errorf("no metadata")
+		return nil, status.Error(codes.Unauthenticated, "no metadata")
 	}
 
 	authHeaders := md.Get("authorization")
 	if len(authHeaders) == 0 {
-		return nil, fmt.Errorf("unauthorized: no authorization header")
+		return nil, status.Error(codes.Unauthenticated, "no authorization header")
 	}
 
 	ctx, err := mid.HandleAuthorization(ctx, authHeaders[0], a.userBus, a.auth)
 	if err != nil {
-		return nil, fmt.Errorf("unauthorized: %w", err)
+		a.log.Info(ctx, "token", "status", "unauthenticated", "err", err)
+		return nil, status.Error(codes.Unauthenticated, "invalid credentials")
 	}
 
 	return handler(ctx, req)
 }
 
-func (a *App) authenticate(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		return nil, fmt.Errorf("no metadata")
+// NOTE(AI): optional JWT dates (e.g. nbf, which no token minter sets) are nil;
+// map nil <-> 0 so encoding doesn't panic and decoding stays nil.
+func ndToInt64(nd *jwt.NumericDate) int64 {
+	if nd == nil {
+		return 0
 	}
-
-	authHeaders := md.Get("authorization")
-	if len(authHeaders) == 0 {
-		return nil, fmt.Errorf("unauthorized: no authorization header")
-	}
-
-	ctx, err := mid.HandleAuthentication(ctx, a.auth, authHeaders[0])
-	if err != nil {
-		return nil, fmt.Errorf("unauthorized: %w", err)
-	}
-
-	return handler(ctx, req)
+	return nd.Unix()
 }
 
 func int64ToND(in int64) *jwt.NumericDate {
+	if in == 0 {
+		return nil
+	}
 	round, frac := math.Modf(float64(in))
 	return jwt.NewNumericDate(time.Unix(int64(round), int64(frac*1e9)))
 }

@@ -17,9 +17,9 @@ func authorizeRequestToGRPC(auth authclient.Authorize) *authpb.AuthorizeRequest 
 		Issuer:    new(auth.Claims.Issuer),
 		Subject:   new(auth.Claims.Subject),
 		Audience:  auth.Claims.Audience,
-		ExpiresAt: new(auth.Claims.ExpiresAt.Unix()),
-		NotBefore: new(auth.Claims.NotBefore.Unix()),
-		IssuedAt:  new(auth.Claims.IssuedAt.Unix()),
+		ExpiresAt: new(ndToInt64(auth.Claims.ExpiresAt)),
+		NotBefore: new(ndToInt64(auth.Claims.NotBefore)),
+		IssuedAt:  new(ndToInt64(auth.Claims.IssuedAt)),
 		Roles:     auth.Claims.Roles,
 	}
 	claims := cb.Build()
@@ -61,7 +61,19 @@ func authenticateRespFromGRPC(a *authpb.AuthenticateResponse) (authclient.Authen
 	return resp, nil
 }
 
+// NOTE(AI): optional JWT dates (e.g. nbf) are nil; map nil <-> 0 so encoding
+// doesn't panic and decoding stays nil, matching the HTTP client's JSON shape.
+func ndToInt64(nd *jwt.NumericDate) int64 {
+	if nd == nil {
+		return 0
+	}
+	return nd.Unix()
+}
+
 func int64ToND(in int64) *jwt.NumericDate {
+	if in == 0 {
+		return nil
+	}
 	round, frac := math.Modf(float64(in))
 	return jwt.NewNumericDate(time.Unix(int64(round), int64(frac*1e9)))
 }

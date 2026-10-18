@@ -41,7 +41,13 @@
 | Dev-тулзы | `go install …@latest` в `makefile` (staticcheck, govulncheck, goimports, protoc-gen-go…) | `tools/` (свой `go.mod`, `tools.go`) → `bin/` | (e) |
 | Фоновые процессы | нет `internal/workers` | `internal/workers/` при появлении | — |
 
-### Незавершённое: gRPC-фиксы авторизации (перенести!)
+### ✅ gRPC-фиксы авторизации — перенесены 2026-10-18
+
+> Выполнено: перенесены в `internal/handler/grpc/auth/authapp.go` и
+> `internal/service/authclient/grpc/model.go`; проверено временным in-process тестом
+> (Token без/с неверными creds → Unauthenticated, верные → токен с ролью USER; Authenticate
+> отдаёт Claims; rule_any/user_only/admin_or_subject проходят, rule_admin_only → PermissionDenied),
+> на старом коде тест падает. Ниже — исходное описание.
 
 Фиксы сделаны **только** в worktree-ветке `claude/keen-proskuriakova-20f1cb` на старой
 раскладке (`app/domain/grpcauthapp/authapp.go`, `app/sdk/authclient/grpc/model.go`,
