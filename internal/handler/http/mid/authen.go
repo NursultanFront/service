@@ -3,6 +3,7 @@ package mid
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 	"net/http"
 	"net/mail"
 	"strings"
@@ -90,7 +91,7 @@ func HandleAuthentication(ctx context.Context, ath *auth.Auth, authorizationHead
 
 	subjectID, err := uuid.Parse(claims.Subject)
 	if err != nil {
-		return ctx, errs.Errorf(errs.Unauthenticated, "parsing subject: %s", err)
+		return ctx, errs.Wrap(errs.Unauthenticated, fmt.Errorf("parsing subject: %w", err), "invalid token subject") // NOTE(AI): safe message (step (h))
 	}
 
 	ctx = setUserID(ctx, subjectID)
@@ -144,7 +145,7 @@ func HandleAuthorization(ctx context.Context, authorizationHeader string, userBu
 
 	subjectID, err := uuid.Parse(claims.Subject)
 	if err != nil {
-		return ctx, errs.Errorf(errs.Unauthenticated, "parsing subject: %s", err)
+		return ctx, errs.Wrap(errs.Unauthenticated, fmt.Errorf("parsing subject: %w", err), "invalid token subject") // NOTE(AI): safe message (step (h))
 	}
 
 	ctx = setUserID(ctx, subjectID)

@@ -3,6 +3,7 @@ package mid
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -38,7 +39,14 @@ func Authorize(client authclient.Authenticator, rule string) web.MidFunc {
 			defer cancel()
 
 			if err := client.Authorize(ctx, auth); err != nil {
-				return errs.New(errs.Unauthenticated, err)
+				// NOTE(AI): authclients report a policy denial as errs.PermissionDenied
+				// (HTTP 403 / gRPC PermissionDenied); pass it through as 403 (step (h)).
+				var appErr *errs.Error
+				if errors.As(err, &appErr) && appErr.Code == errs.PermissionDenied {
+					return errs.Wrap(errs.PermissionDenied, err, "you are not authorized for that action")
+				}
+
+				return errs.Wrap(errs.Unauthenticated, err, "not authorized")
 			}
 
 			return next(ctx, r)
@@ -74,7 +82,7 @@ func AuthorizeUser(client authclient.Authenticator, userBus userbus.ExtBusiness,
 					case errors.Is(err, userbus.ErrNotFound):
 						return errs.New(errs.Unauthenticated, err)
 					default:
-						return errs.Errorf(errs.Unauthenticated, "querybyid: userID[%s]: %s", userID, err)
+						return errs.Wrap(errs.Unauthenticated, fmt.Errorf("querybyid: userID[%s]: %w", userID, err), "not authorized") // NOTE(AI): safe message (step (h))
 					}
 				}
 
@@ -91,7 +99,14 @@ func AuthorizeUser(client authclient.Authenticator, userBus userbus.ExtBusiness,
 			}
 
 			if err := client.Authorize(ctx, auth); err != nil {
-				return errs.New(errs.Unauthenticated, err)
+				// NOTE(AI): authclients report a policy denial as errs.PermissionDenied
+				// (HTTP 403 / gRPC PermissionDenied); pass it through as 403 (step (h)).
+				var appErr *errs.Error
+				if errors.As(err, &appErr) && appErr.Code == errs.PermissionDenied {
+					return errs.Wrap(errs.PermissionDenied, err, "you are not authorized for that action")
+				}
+
+				return errs.Wrap(errs.Unauthenticated, err, "not authorized")
 			}
 
 			return next(ctx, r)
@@ -127,7 +142,7 @@ func AuthorizeProduct(client authclient.Authenticator, productBus productbus.Ext
 					case errors.Is(err, productbus.ErrNotFound):
 						return errs.New(errs.Unauthenticated, err)
 					default:
-						return errs.Errorf(errs.Unauthenticated, "querybyid: productID[%s]: %s", productID, err)
+						return errs.Wrap(errs.Unauthenticated, fmt.Errorf("querybyid: productID[%s]: %w", productID, err), "not authorized") // NOTE(AI): safe message (step (h))
 					}
 				}
 
@@ -145,7 +160,14 @@ func AuthorizeProduct(client authclient.Authenticator, productBus productbus.Ext
 			}
 
 			if err := client.Authorize(ctx, auth); err != nil {
-				return errs.New(errs.Unauthenticated, err)
+				// NOTE(AI): authclients report a policy denial as errs.PermissionDenied
+				// (HTTP 403 / gRPC PermissionDenied); pass it through as 403 (step (h)).
+				var appErr *errs.Error
+				if errors.As(err, &appErr) && appErr.Code == errs.PermissionDenied {
+					return errs.Wrap(errs.PermissionDenied, err, "you are not authorized for that action")
+				}
+
+				return errs.Wrap(errs.Unauthenticated, err, "not authorized")
 			}
 
 			return next(ctx, r)
@@ -181,7 +203,7 @@ func AuthorizeHome(client authclient.Authenticator, homeBus homebus.ExtBusiness)
 					case errors.Is(err, homebus.ErrNotFound):
 						return errs.New(errs.Unauthenticated, err)
 					default:
-						return errs.Errorf(errs.Unauthenticated, "querybyid: homeID[%s]: %s", homeID, err)
+						return errs.Wrap(errs.Unauthenticated, fmt.Errorf("querybyid: homeID[%s]: %w", homeID, err), "not authorized") // NOTE(AI): safe message (step (h))
 					}
 				}
 
@@ -199,7 +221,14 @@ func AuthorizeHome(client authclient.Authenticator, homeBus homebus.ExtBusiness)
 			}
 
 			if err := client.Authorize(ctx, auth); err != nil {
-				return errs.New(errs.Unauthenticated, err)
+				// NOTE(AI): authclients report a policy denial as errs.PermissionDenied
+				// (HTTP 403 / gRPC PermissionDenied); pass it through as 403 (step (h)).
+				var appErr *errs.Error
+				if errors.As(err, &appErr) && appErr.Code == errs.PermissionDenied {
+					return errs.Wrap(errs.PermissionDenied, err, "you are not authorized for that action")
+				}
+
+				return errs.Wrap(errs.Unauthenticated, err, "not authorized")
 			}
 
 			return next(ctx, r)

@@ -117,7 +117,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 			URL:        fmt.Sprintf("/v1/homes/%s", sd.Admins[0].Homes[0].ID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
-			StatusCode: http.StatusUnauthorized,
+			StatusCode: http.StatusForbidden,
 			Input: &homeapp.UpdateHome{
 				Type: new("SINGLE FAMILY"),
 				Address: &homeapp.UpdateAddress{
@@ -130,7 +130,7 @@ func update401(sd apitest.SeedData) []apitest.Table {
 				},
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Errorf(errs.Unauthenticated, "authorize: you are not authorized for that action, claims[[USER]] rule[rule_admin_or_subject]"),
+			ExpResp: errs.Errorf(errs.PermissionDenied, "you are not authorized for that action"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

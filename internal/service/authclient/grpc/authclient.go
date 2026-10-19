@@ -5,11 +5,14 @@ import (
 	"context"
 	"fmt"
 
+	errs "github.com/ardanlabs/service/internal/errors"
 	"github.com/ardanlabs/service/internal/generated/authpb"
 	"github.com/ardanlabs/service/internal/service/authclient"
 	"github.com/ardanlabs/service/pkg/foundation/logger"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 )
 
 // Client represents a client that can talk to the auth service.
@@ -71,6 +74,12 @@ func (cln *Client) Authorize(ctx context.Context, auth authclient.Authorize) err
 	req := authorizeRequestToGRPC(auth)
 
 	if _, err := cln.grpc.Authorize(ctx, req); err != nil {
+		// NOTE(AI): map a policy denial to the same error the HTTP client returns,
+		// so mid.Authorize answers 403 in both modes (step (h)).
+		if status.Code(err) == codes.PermissionDenied {
+			return errs.Wrap(errs.PermissionDenied, err, "you are not authorized for that action")
+		}
+
 		return err
 	}
 

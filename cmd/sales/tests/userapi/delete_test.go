@@ -61,9 +61,9 @@ func delete401(sd apitest.SeedData) []apitest.Table {
 			URL:        fmt.Sprintf("/v1/users/%s", sd.Users[0].ID),
 			Token:      sd.Users[2].Token,
 			Method:     http.MethodDelete,
-			StatusCode: http.StatusUnauthorized,
+			StatusCode: http.StatusForbidden,
 			GotResp:    &errs.Error{},
-			ExpResp:    errs.Errorf(errs.Unauthenticated, "authorize: you are not authorized for that action, claims[[USER]] rule[rule_admin_or_subject]"),
+			ExpResp:    errs.Errorf(errs.PermissionDenied, "you are not authorized for that action"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

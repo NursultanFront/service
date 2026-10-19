@@ -4,6 +4,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 
 	errs "github.com/ardanlabs/service/internal/errors"
@@ -100,7 +101,8 @@ func (a *app) authorize(ctx context.Context, r *http.Request) web.Encoder {
 	}
 
 	if err := a.auth.Authorize(ctx, auth.Claims, auth.UserID, auth.Rule); err != nil {
-		return errs.Errorf(errs.Unauthenticated, "authorize: you are not authorized for that action, claims[%v] rule[%v]", auth.Claims.Roles, auth.Rule)
+		// NOTE(AI): 403 with a safe message; claims and rule stay in the logged cause (step (h)).
+		return errs.Wrap(errs.PermissionDenied, fmt.Errorf("authorize: claims[%v] rule[%v]: %w", auth.Claims.Roles, auth.Rule, err), "you are not authorized for that action")
 	}
 
 	return nil

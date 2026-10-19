@@ -163,7 +163,7 @@ func (cln *Client) do(ctx context.Context, method string, endpoint string, heade
 		}
 		return nil
 
-	case http.StatusUnauthorized:
+	case http.StatusUnauthorized, http.StatusForbidden: // NOTE(AI): 403 = policy denial (step (h))
 		var err *errs.Error
 		if err := json.Unmarshal(data, &err); err != nil {
 			return fmt.Errorf("failed: response: %s, decoding error: %w ", string(data), err)

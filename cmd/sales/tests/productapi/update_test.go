@@ -105,14 +105,14 @@ func update401(sd apitest.SeedData) []apitest.Table {
 			URL:        fmt.Sprintf("/v1/products/%s", sd.Admins[0].Products[0].ID),
 			Token:      sd.Users[0].Token,
 			Method:     http.MethodPut,
-			StatusCode: http.StatusUnauthorized,
+			StatusCode: http.StatusForbidden,
 			Input: &productapp.UpdateProduct{
 				Name:     new("Guitar"),
 				Cost:     new(10.34),
 				Quantity: new(10),
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Errorf(errs.Unauthenticated, "authorize: you are not authorized for that action, claims[[USER]] rule[rule_admin_or_subject]"),
+			ExpResp: errs.Errorf(errs.PermissionDenied, "you are not authorized for that action"),
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},

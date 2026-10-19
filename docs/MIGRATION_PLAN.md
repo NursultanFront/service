@@ -232,7 +232,18 @@
 - **Проверка:** фронт собирается и логинится на `http://localhost:3001` (httpOnly cookie).
 - **Зависит от:** —.
 
-### (h) `internal/errors`: внутренняя причина + внешнее сообщение
+### (h) `internal/errors`: внутренняя причина + внешнее сообщение — ✅ выполнено 2026-10-19
+
+> Сделано: `errs.Error.Cause` (`json:"-"`) + `Unwrap()`; `errs.Wrap(code, cause, safeMessage)`;
+> `mid.Errors` логирует `cause`, а для `Internal`/`Unknown`/`DataLoss`/`Unavailable`/`InternalOnlyLog`
+> отдаёт клиенту только `http.StatusText` (раньше уходили `usr[%+v]` с хэшем пароля и тексты БД).
+> Отказ OPA: auth → 403 `permission_denied` «you are not authorized for that action» (claims/rule
+> только в логе); HTTP- и gRPC-authclient нормализуют отказ в `errs.PermissionDenied`, `mid.Authorize`
+> отдаёт 403. Безопасные тексты в `mid/authorize.go` (querybyid) и `mid/authen.go` (parsing subject).
+> 10 тест-кейсов sales: 401 → 403. gRPC-хендлер уже отдавал `status.Error` с безопасными текстами.
+> **Остаток (не входил в согласованный план):** ошибки аутентификации (401) всё ещё содержат
+> внутренний текст (`error parsing token: …`, `authentication failed: OPA policy evaluation …`) —
+> кандидат на отдельный маленький шаг.
 
 - **Цель:** правило 4 стандарта.
 - **Что:** тип ошибки хранит `cause error` (для логов, `errors.Unwrap`) и безопасное

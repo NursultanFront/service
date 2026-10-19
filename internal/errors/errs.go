@@ -49,6 +49,10 @@ type Error struct {
 	Message  string  `json:"message"`
 	FuncName string  `json:"-"`
 	FileName string  `json:"-"`
+
+	// NOTE(AI): Cause is the internal error behind Message (migration step
+	// (h)). It is logged by the error middleware and never encoded to clients.
+	Cause error `json:"-"`
 }
 
 // New constructs an error based on an app error.
@@ -60,6 +64,23 @@ func New(code ErrCode, err error) *Error {
 		Message:  err.Error(),
 		FuncName: runtime.FuncForPC(pc).Name(),
 		FileName: fmt.Sprintf("%s:%d", filename, line),
+		Cause:    err,
+	}
+}
+
+// Wrap constructs an error whose client-facing message is the given safe
+// message, while the internal cause is kept for logs and errors.Is/As.
+//
+// NOTE(AI): added in migration step (h): internal cause + safe external message.
+func Wrap(code ErrCode, cause error, message string) *Error {
+	pc, filename, line, _ := runtime.Caller(1)
+
+	return &Error{
+		Code:     code,
+		Message:  message,
+		FuncName: runtime.FuncForPC(pc).Name(),
+		FileName: fmt.Sprintf("%s:%d", filename, line),
+		Cause:    cause,
 	}
 }
 
@@ -78,6 +99,11 @@ func Errorf(code ErrCode, format string, v ...any) *Error {
 // Error implements the error interface.
 func (e *Error) Error() string {
 	return e.Message
+}
+
+// Unwrap returns the internal cause so errors.Is and errors.As see through it.
+func (e *Error) Unwrap() error {
+	return e.Cause
 }
 
 // Encode implements the encoder interface.

@@ -34,11 +34,18 @@ func Errors(log *logger.Logger) web.MidFunc {
 
 			log.Error(ctx, "handled error during request",
 				"err", err,
+				"cause", appErr.Cause,
 				"source_err_file", path.Base(appErr.FileName),
 				"source_err_func", path.Base(appErr.FuncName))
 
-			if appErr.Code == errs.InternalOnlyLog {
+			// NOTE(AI): server-side failures never expose internal details to the
+			// client (migration step (h)); the full error is in the log above.
+			switch appErr.Code {
+			case errs.InternalOnlyLog:
 				appErr = errs.Errorf(errs.Internal, "Internal Server Error")
+
+			case errs.Internal, errs.Unknown, errs.DataLoss, errs.Unavailable:
+				appErr = errs.Errorf(appErr.Code, "%s", http.StatusText(appErr.HTTPStatus()))
 			}
 
 			// Send the error to the web package so the error can be
