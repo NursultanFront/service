@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"strings"
 
-	productbus "github.com/ardanlabs/service/internal/usecase/product"
+	"github.com/ardanlabs/service/internal/models"
 )
 
 // ApplyFilter appends a WHERE clause to buf based on the fields set in
 // filter and adds the matching named bind values to data. The clause uses
 // only portable SQL so it works for every supported engine.
-func ApplyFilter(filter productbus.QueryFilter, data map[string]any, buf *bytes.Buffer) {
+func ApplyFilter(filter models.ProductQueryFilter, data map[string]any, buf *bytes.Buffer) {
 	var wc []string
 
 	if filter.ID != nil {

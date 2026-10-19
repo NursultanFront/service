@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	auditbus "github.com/ardanlabs/service/internal/usecase/audit"
+	"github.com/ardanlabs/service/internal/models"
 )
 
-func applyFilter(filter auditbus.QueryFilter, data map[string]any, buf *bytes.Buffer) {
+func applyFilter(filter models.AuditQueryFilter, data map[string]any, buf *bytes.Buffer) {
 	var wc []string
 
 	if filter.ObjID != nil {

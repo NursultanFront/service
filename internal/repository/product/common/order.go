@@ -3,18 +3,18 @@ package common
 import (
 	"fmt"
 
+	"github.com/ardanlabs/service/internal/models"
 	"github.com/ardanlabs/service/internal/sys/order"
-	productbus "github.com/ardanlabs/service/internal/usecase/product"
 )
 
 // OrderByFields maps a productbus ordering key to its database column name.
 // The mapping is shared because every engine uses the same column names.
 var OrderByFields = map[string]string{
-	productbus.OrderByProductID: "product_id",
-	productbus.OrderByUserID:    "user_id",
-	productbus.OrderByName:      "name",
-	productbus.OrderByCost:      "cost",
-	productbus.OrderByQuantity:  "quantity",
+	models.ProductOrderByProductID: "product_id",
+	models.ProductOrderByUserID:    "user_id",
+	models.ProductOrderByName:      "name",
+	models.ProductOrderByCost:      "cost",
+	models.ProductOrderByQuantity:  "quantity",
 }
 
 // OrderByClause builds an ORDER BY clause for the given ordering. It

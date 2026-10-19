@@ -3,16 +3,16 @@ package audit
 import (
 	"fmt"
 
+	"github.com/ardanlabs/service/internal/models"
 	"github.com/ardanlabs/service/internal/sys/order"
-	auditbus "github.com/ardanlabs/service/internal/usecase/audit"
 )
 
 var orderByFields = map[string]string{
-	auditbus.OrderByObjID:     "obj_id",
-	auditbus.OrderByObjDomain: "obj_domain",
-	auditbus.OrderByObjName:   "obj_name",
-	auditbus.OrderByActorID:   "actor_id",
-	auditbus.OrderByAction:    "action",
+	models.AuditOrderByObjID:     "obj_id",
+	models.AuditOrderByObjDomain: "obj_domain",
+	models.AuditOrderByObjName:   "obj_name",
+	models.AuditOrderByActorID:   "actor_id",
+	models.AuditOrderByAction:    "action",
 }
 
 func orderByClause(orderBy order.By) (string, error) {

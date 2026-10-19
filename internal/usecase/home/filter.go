@@ -1,18 +1,8 @@
 package home
 
-import (
-	"time"
-
-	"github.com/ardanlabs/service/internal/models/types/home"
-	"github.com/google/uuid"
-)
+import "github.com/ardanlabs/service/internal/models"
 
 // QueryFilter holds the available fields a query can be filtered on.
-// We are using pointer semantics because the With API mutates the value.
-type QueryFilter struct {
-	ID               *uuid.UUID
-	UserID           *uuid.UUID
-	Type             *home.Home
-	StartCreatedDate *time.Time
-	EndCreatedDate   *time.Time
-}
+//
+// NOTE(AI): alias of models.HomeQueryFilter (migration step (b2)).
+type QueryFilter = models.HomeQueryFilter

@@ -136,7 +136,12 @@
 - **Проверка:** `go vet ./...`, `make test-only`.
 - **Зависит от:** (0); лучше после (a), чтобы не конфликтовать.
 
-### (b2) `repository` без импорта `usecase`
+### (b2) `repository` без импорта `usecase` — ✅ выполнено 2026-10-19
+
+> Решение: `Storer` (user/product/home) → `models.<Entity>Storer` (Go требует точный тип
+> возврата `NewWithTx`); `QueryFilter`/`OrderBy*` → `internal/models/<x>_query.go`; ошибки
+> `ErrNotFound`/`ErrUniqueEmail` → `internal/models/errors.go`. В usecase — алиасы, handler'ы и
+> тесты не менялись. `rg internal/usecase internal/repository` → пусто.
 
 - **Цель:** снизить связность (идея `deps.go`): `internal/repository/*` сейчас импортирует
   `internal/usecase/*` ради `QueryFilter`, доменных ошибок (`ErrNotFound`, `ErrUniqueEmail`…)

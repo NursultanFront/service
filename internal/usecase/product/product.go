@@ -19,7 +19,7 @@ import (
 
 // Set of error variables for CRUD operations.
 var (
-	ErrNotFound     = errors.New("product not found")
+	ErrNotFound     = models.ErrProductNotFound // NOTE(AI): moved to models in step (b2)
 	ErrUserDisabled = errors.New("user disabled")
 	ErrInvalidCost  = errors.New("cost not valid")
 )

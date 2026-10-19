@@ -3,16 +3,16 @@ package user
 import (
 	"fmt"
 
+	"github.com/ardanlabs/service/internal/models"
 	"github.com/ardanlabs/service/internal/sys/order"
-	userbus "github.com/ardanlabs/service/internal/usecase/user"
 )
 
 var orderByFields = map[string]string{
-	userbus.OrderByID:      "user_id",
-	userbus.OrderByName:    "name",
-	userbus.OrderByEmail:   "email",
-	userbus.OrderByRoles:   "roles",
-	userbus.OrderByEnabled: "enabled",
+	models.UserOrderByID:      "user_id",
+	models.UserOrderByName:    "name",
+	models.UserOrderByEmail:   "email",
+	models.UserOrderByRoles:   "roles",
+	models.UserOrderByEnabled: "enabled",
 }
 
 func orderByClause(orderBy order.By) (string, error) {

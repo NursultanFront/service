@@ -10,7 +10,6 @@ import (
 	sqldb "github.com/ardanlabs/service/internal/sys/db"
 	"github.com/ardanlabs/service/internal/sys/order"
 	"github.com/ardanlabs/service/internal/sys/page"
-	userbus "github.com/ardanlabs/service/internal/usecase/user"
 	"github.com/ardanlabs/service/pkg/foundation/logger"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -25,7 +24,7 @@ import (
 // use; `cache` may be nil (e.g. in tests), so guard against that.
 type Store struct {
 	log    *logger.Logger
-	storer userbus.Storer
+	storer models.UserStorer
 	cache  *redis.Client
 	ttl    time.Duration
 	inTran bool
@@ -33,7 +32,7 @@ type Store struct {
 
 // NewStore constructs the api for data and caching access. cache may be nil,
 // in which case this Store behaves as a plain passthrough with no caching.
-func NewStore(log *logger.Logger, storer userbus.Storer, cache *redis.Client, ttl time.Duration) *Store {
+func NewStore(log *logger.Logger, storer models.UserStorer, cache *redis.Client, ttl time.Duration) *Store {
 	return &Store{
 		log:    log,
 		storer: storer,
@@ -44,7 +43,7 @@ func NewStore(log *logger.Logger, storer userbus.Storer, cache *redis.Client, tt
 
 // NewWithTx constructs a new Store value replacing the sqlx DB
 // value with a sqlx DB value that is currently inside a transaction.
-func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (userbus.Storer, error) {
+func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (models.UserStorer, error) {
 	txStorer, err := s.storer.NewWithTx(tx)
 	if err != nil {
 		return nil, err
@@ -95,12 +94,12 @@ func (s *Store) Delete(ctx context.Context, usr models.User) error {
 }
 
 // Query retrieves a list of existing users from the database.
-func (s *Store) Query(ctx context.Context, filter userbus.QueryFilter, orderBy order.By, page page.Page) ([]models.User, error) {
+func (s *Store) Query(ctx context.Context, filter models.UserQueryFilter, orderBy order.By, page page.Page) ([]models.User, error) {
 	return s.storer.Query(ctx, filter, orderBy, page)
 }
 
 // Count returns the total number of cards in the DB.
-func (s *Store) Count(ctx context.Context, filter userbus.QueryFilter) (int, error) {
+func (s *Store) Count(ctx context.Context, filter models.UserQueryFilter) (int, error) {
 	return s.storer.Count(ctx, filter)
 }
 

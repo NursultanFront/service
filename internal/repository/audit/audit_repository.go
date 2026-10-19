@@ -10,7 +10,6 @@ import (
 	sqldb "github.com/ardanlabs/service/internal/sys/db"
 	"github.com/ardanlabs/service/internal/sys/order"
 	"github.com/ardanlabs/service/internal/sys/page"
-	auditbus "github.com/ardanlabs/service/internal/usecase/audit"
 	"github.com/ardanlabs/service/pkg/foundation/logger"
 	"github.com/jmoiron/sqlx"
 )
@@ -49,7 +48,7 @@ func (s *Store) Create(ctx context.Context, a models.Audit) error {
 	return nil
 }
 
-func (s *Store) Query(ctx context.Context, filter auditbus.QueryFilter, orderBy order.By, page page.Page) ([]models.Audit, error) {
+func (s *Store) Query(ctx context.Context, filter models.AuditQueryFilter, orderBy order.By, page page.Page) ([]models.Audit, error) {
 	data := map[string]any{
 		"offset":        (page.Number() - 1) * page.RowsPerPage(),
 		"rows_per_page": page.RowsPerPage(),
@@ -82,7 +81,7 @@ func (s *Store) Query(ctx context.Context, filter auditbus.QueryFilter, orderBy 
 }
 
 // Count returns the total number of users in the DB.
-func (s *Store) Count(ctx context.Context, filter auditbus.QueryFilter) (int, error) {
+func (s *Store) Count(ctx context.Context, filter models.AuditQueryFilter) (int, error) {
 	data := map[string]any{}
 
 	const q = `

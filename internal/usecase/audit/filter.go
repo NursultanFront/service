@@ -1,21 +1,8 @@
 package audit
 
-import (
-	"time"
-
-	"github.com/ardanlabs/service/internal/models/types/domain"
-	"github.com/ardanlabs/service/internal/models/types/name"
-	"github.com/google/uuid"
-)
+import "github.com/ardanlabs/service/internal/models"
 
 // QueryFilter holds the available fields a query can be filtered on.
-// We are using pointer semantics because the With API mutates the value.
-type QueryFilter struct {
-	ObjID     *uuid.UUID
-	ObjDomain *domain.Domain
-	ObjName   *name.Name
-	ActorID   *uuid.UUID
-	Action    *string
-	Since     *time.Time
-	Until     *time.Time
-}
+//
+// NOTE(AI): alias of models.AuditQueryFilter (migration step (b2)).
+type QueryFilter = models.AuditQueryFilter

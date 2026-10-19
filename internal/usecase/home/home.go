@@ -19,7 +19,7 @@ import (
 
 // Set of error variables for CRUD operations.
 var (
-	ErrNotFound     = errors.New("home not found")
+	ErrNotFound     = models.ErrHomeNotFound // NOTE(AI): moved to models in step (b2)
 	ErrUserDisabled = errors.New("user disabled")
 )
 

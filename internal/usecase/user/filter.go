@@ -1,19 +1,8 @@
 package user
 
-import (
-	"net/mail"
-	"time"
-
-	"github.com/ardanlabs/service/internal/models/types/name"
-	"github.com/google/uuid"
-)
+import "github.com/ardanlabs/service/internal/models"
 
 // QueryFilter holds the available fields a query can be filtered on.
-// We are using pointer semantics because the With API mutates the value.
-type QueryFilter struct {
-	ID               *uuid.UUID
-	Name             *name.Name
-	Email            *mail.Address
-	StartCreatedDate *time.Time
-	EndCreatedDate   *time.Time
-}
+//
+// NOTE(AI): alias of models.UserQueryFilter (migration step (b2)).
+type QueryFilter = models.UserQueryFilter

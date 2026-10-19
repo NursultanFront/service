@@ -146,8 +146,12 @@ project-root/
      logic** — it stores/reads exactly what it is given.
 3. **Dependency Inversion via `deps.go`.** Interfaces are declared by the consumer in
    `internal/usecase/<entity>/deps.go`, never next to the implementation. `usecase` never
-   depends on a concrete repository or provider type. (A repository importing its usecase
-   package for shared filters/errors is allowed — the dependency points inward.)
+   depends on a concrete repository or provider type. **`repository` never imports `usecase`**:
+   query filters (`models.<Entity>QueryFilter`), order-by fields (`models.<Entity>OrderBy*`),
+   shared domain errors (`models.Err<Entity>…`) and the `Storer` interfaces whose `NewWithTx`
+   returns the interface itself (`models.<Entity>Storer`, a Go typing constraint) live in
+   `internal/models`; the usecase package re-exports them as aliases
+   (`type QueryFilter = models.UserQueryFilter`, `type Storer = models.UserStorer`).
 4. **`models` vs `dto`.** `models` are internal entities (never a raw password — use a hash;
    use a reduced struct such as `UserShortInfo` for restricted views). DTOs (`json`/`db` tags)
    exist only at the edges: `handler` and `repository`.

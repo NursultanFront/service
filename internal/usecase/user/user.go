@@ -21,8 +21,8 @@ import (
 
 // Set of error variables for CRUD operations.
 var (
-	ErrNotFound              = errors.New("user not found")
-	ErrUniqueEmail           = errors.New("email is not unique")
+	ErrNotFound              = models.ErrUserNotFound    // NOTE(AI): moved to models in step (b2)
+	ErrUniqueEmail           = models.ErrUserUniqueEmail // NOTE(AI): moved to models in step (b2)
 	ErrAuthenticationFailure = errors.New("authentication failed")
 )
 

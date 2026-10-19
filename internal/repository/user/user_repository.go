@@ -12,7 +12,6 @@ import (
 	sqldb "github.com/ardanlabs/service/internal/sys/db"
 	"github.com/ardanlabs/service/internal/sys/order"
 	"github.com/ardanlabs/service/internal/sys/page"
-	userbus "github.com/ardanlabs/service/internal/usecase/user"
 	"github.com/ardanlabs/service/pkg/foundation/logger"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -34,7 +33,7 @@ func NewStore(log *logger.Logger, db *sqlx.DB) *Store {
 
 // NewWithTx constructs a new Store value replacing the sqlx DB
 // value with a sqlx DB value that is currently inside a transaction.
-func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (userbus.Storer, error) {
+func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (models.UserStorer, error) {
 	ec, err := sqldb.GetExtContext(tx)
 	if err != nil {
 		return nil, err
@@ -58,7 +57,7 @@ func (s *Store) Create(ctx context.Context, usr models.User) error {
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBUser(usr)); err != nil {
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
-			return fmt.Errorf("namedexeccontext: %w", userbus.ErrUniqueEmail)
+			return fmt.Errorf("namedexeccontext: %w", models.ErrUserUniqueEmail)
 		}
 		return fmt.Errorf("namedexeccontext: %w", err)
 	}
@@ -84,7 +83,7 @@ func (s *Store) Update(ctx context.Context, usr models.User) error {
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBUser(usr)); err != nil {
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
-			return userbus.ErrUniqueEmail
+			return models.ErrUserUniqueEmail
 		}
 		return fmt.Errorf("namedexeccontext: %w", err)
 	}
@@ -108,7 +107,7 @@ func (s *Store) Delete(ctx context.Context, usr models.User) error {
 }
 
 // Query retrieves a list of existing users from the database.
-func (s *Store) Query(ctx context.Context, filter userbus.QueryFilter, orderBy order.By, page page.Page) ([]models.User, error) {
+func (s *Store) Query(ctx context.Context, filter models.UserQueryFilter, orderBy order.By, page page.Page) ([]models.User, error) {
 	data := map[string]any{
 		"offset":        (page.Number() - 1) * page.RowsPerPage(),
 		"rows_per_page": page.RowsPerPage(),
@@ -140,7 +139,7 @@ func (s *Store) Query(ctx context.Context, filter userbus.QueryFilter, orderBy o
 }
 
 // Count returns the total number of users in the DB.
-func (s *Store) Count(ctx context.Context, filter userbus.QueryFilter) (int, error) {
+func (s *Store) Count(ctx context.Context, filter models.UserQueryFilter) (int, error) {
 	data := map[string]any{}
 
 	const q = `
@@ -181,7 +180,7 @@ func (s *Store) QueryByID(ctx context.Context, userID uuid.UUID) (models.User, e
 	var dbUsr userDB
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbUsr); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
-			return models.User{}, fmt.Errorf("db: %w", userbus.ErrNotFound)
+			return models.User{}, fmt.Errorf("db: %w", models.ErrUserNotFound)
 		}
 		return models.User{}, fmt.Errorf("db: %w", err)
 	}
@@ -208,7 +207,7 @@ func (s *Store) QueryByEmail(ctx context.Context, email mail.Address) (models.Us
 	var dbUsr userDB
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbUsr); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
-			return models.User{}, fmt.Errorf("db: %w", userbus.ErrNotFound)
+			return models.User{}, fmt.Errorf("db: %w", models.ErrUserNotFound)
 		}
 		return models.User{}, fmt.Errorf("db: %w", err)
 	}

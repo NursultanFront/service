@@ -11,7 +11,6 @@ import (
 	sqldb "github.com/ardanlabs/service/internal/sys/db"
 	"github.com/ardanlabs/service/internal/sys/order"
 	"github.com/ardanlabs/service/internal/sys/page"
-	homebus "github.com/ardanlabs/service/internal/usecase/home"
 	"github.com/ardanlabs/service/pkg/foundation/logger"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -33,7 +32,7 @@ func NewStore(log *logger.Logger, db *sqlx.DB) *Store {
 
 // NewWithTx constructs a new Store value replacing the sqlx DB
 // value with a sqlx DB value that is currently inside a transaction.
-func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (homebus.Storer, error) {
+func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (models.HomeStorer, error) {
 	ec, err := sqldb.GetExtContext(tx)
 	if err != nil {
 		return nil, err
@@ -108,7 +107,7 @@ func (s *Store) Update(ctx context.Context, hme models.Home) error {
 }
 
 // Query retrieves a list of existing homes from the database.
-func (s *Store) Query(ctx context.Context, filter homebus.QueryFilter, orderBy order.By, page page.Page) ([]models.Home, error) {
+func (s *Store) Query(ctx context.Context, filter models.HomeQueryFilter, orderBy order.By, page page.Page) ([]models.Home, error) {
 	data := map[string]any{
 		"offset":        (page.Number() - 1) * page.RowsPerPage(),
 		"rows_per_page": page.RowsPerPage(),
@@ -145,7 +144,7 @@ func (s *Store) Query(ctx context.Context, filter homebus.QueryFilter, orderBy o
 }
 
 // Count returns the total number of homes in the DB.
-func (s *Store) Count(ctx context.Context, filter homebus.QueryFilter) (int, error) {
+func (s *Store) Count(ctx context.Context, filter models.HomeQueryFilter) (int, error) {
 	data := map[string]any{}
 
 	const q = `
@@ -186,7 +185,7 @@ func (s *Store) QueryByID(ctx context.Context, homeID uuid.UUID) (models.Home, e
 	var dbHme homeDB
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbHme); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
-			return models.Home{}, fmt.Errorf("db: %w", homebus.ErrNotFound)
+			return models.Home{}, fmt.Errorf("db: %w", models.ErrHomeNotFound)
 		}
 		return models.Home{}, fmt.Errorf("db: %w", err)
 	}

@@ -25,7 +25,6 @@ import (
 	"github.com/ardanlabs/service/internal/sys/db/dialect"
 	"github.com/ardanlabs/service/internal/sys/order"
 	"github.com/ardanlabs/service/internal/sys/page"
-	productbus "github.com/ardanlabs/service/internal/usecase/product"
 	"github.com/ardanlabs/service/pkg/foundation/logger"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -49,7 +48,7 @@ func NewStore(log *logger.Logger, db *sqlx.DB) *Store {
 
 // NewWithTx constructs a new Store value replacing the sqlx DB value with
 // a sqlx DB value that is currently inside a transaction.
-func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (productbus.Storer, error) {
+func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (models.ProductStorer, error) {
 	ec, err := sqldb.GetExtContext(tx)
 	if err != nil {
 		return nil, err
@@ -124,7 +123,7 @@ func (s *Store) Delete(ctx context.Context, prd models.Product) error {
 }
 
 // Query gets all Products from the database matching the filter.
-func (s *Store) Query(ctx context.Context, filter productbus.QueryFilter, orderBy order.By, pg page.Page) ([]models.Product, error) {
+func (s *Store) Query(ctx context.Context, filter models.ProductQueryFilter, orderBy order.By, pg page.Page) ([]models.Product, error) {
 	data := map[string]any{
 		"offset":        (pg.Number() - 1) * pg.RowsPerPage(),
 		"rows_per_page": pg.RowsPerPage(),
@@ -156,7 +155,7 @@ func (s *Store) Query(ctx context.Context, filter productbus.QueryFilter, orderB
 }
 
 // Count returns the total number of products in the DB matching the filter.
-func (s *Store) Count(ctx context.Context, filter productbus.QueryFilter) (int, error) {
+func (s *Store) Count(ctx context.Context, filter models.ProductQueryFilter) (int, error) {
 	data := map[string]any{}
 
 	const q = `
@@ -197,7 +196,7 @@ func (s *Store) QueryByID(ctx context.Context, productID uuid.UUID) (models.Prod
 	var dbPrd commondb.ProductDB
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbPrd); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
-			return models.Product{}, fmt.Errorf("db: %w", productbus.ErrNotFound)
+			return models.Product{}, fmt.Errorf("db: %w", models.ErrProductNotFound)
 		}
 		return models.Product{}, fmt.Errorf("db: %w", err)
 	}

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	userbus "github.com/ardanlabs/service/internal/usecase/user"
+	"github.com/ardanlabs/service/internal/models"
 )
 
-func applyFilter(filter userbus.QueryFilter, data map[string]any, buf *bytes.Buffer) {
+func applyFilter(filter models.UserQueryFilter, data map[string]any, buf *bytes.Buffer) {
 	var wc []string
 
 	if filter.ID != nil {

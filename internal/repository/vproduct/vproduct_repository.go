@@ -10,7 +10,6 @@ import (
 	sqldb "github.com/ardanlabs/service/internal/sys/db"
 	"github.com/ardanlabs/service/internal/sys/order"
 	"github.com/ardanlabs/service/internal/sys/page"
-	vproductbus "github.com/ardanlabs/service/internal/usecase/vproduct"
 	"github.com/ardanlabs/service/pkg/foundation/logger"
 	"github.com/jmoiron/sqlx"
 )
@@ -30,7 +29,7 @@ func NewStore(log *logger.Logger, db *sqlx.DB) *Store {
 }
 
 // Query retrieves a list of existing products from the database.
-func (s *Store) Query(ctx context.Context, filter vproductbus.QueryFilter, orderBy order.By, page page.Page) ([]models.VProduct, error) {
+func (s *Store) Query(ctx context.Context, filter models.VProductQueryFilter, orderBy order.By, page page.Page) ([]models.VProduct, error) {
 	data := map[string]any{
 		"offset":        (page.Number() - 1) * page.RowsPerPage(),
 		"rows_per_page": page.RowsPerPage(),
@@ -74,7 +73,7 @@ func (s *Store) Query(ctx context.Context, filter vproductbus.QueryFilter, order
 }
 
 // Count returns the total number of products in the DB.
-func (s *Store) Count(ctx context.Context, filter vproductbus.QueryFilter) (int, error) {
+func (s *Store) Count(ctx context.Context, filter models.VProductQueryFilter) (int, error) {
 	data := map[string]any{}
 
 	const q = `
