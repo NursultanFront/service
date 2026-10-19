@@ -21,9 +21,9 @@ disk today; "target" = where the standard wants it after the migration plan is d
 
 | Old (Ardan Labs) | Current | Notes |
 |---|---|---|
-| `internal/business/domain/<x>bus/` | `internal/usecase/<x>/` | `<x>` = audit, home, product, user, vproduct. Core file `<x>bus.go` → target `<x>.go` |
+| `internal/business/domain/<x>bus/` | `internal/usecase/<x>/` | `<x>` = audit, home, product, user, vproduct. Core file `<x>bus.go` → `<x>.go` |
 | `internal/business/domain/<x>bus/extensions/*` | `internal/usecase/<x>/extensions/*` | ExtBusiness/Extension decorators |
-| `internal/business/domain/<x>bus/stores/<x>db/` | `internal/repository/<x>/` | `<x>db.go` → target `<x>_repository.go`, `model.go` → target `dto.go` |
+| `internal/business/domain/<x>bus/stores/<x>db/` | `internal/repository/<x>/` | `<x>db.go` → `<x>_repository.go`, `model.go` → `dto.go` |
 | `internal/business/domain/productbus/stores/productdb/` | `internal/repository/product/{common,postgres,sqlite}/` | |
 | `internal/business/domain/userbus/stores/usercache/` | `internal/repository/user/cache/` | |
 | `internal/business/domain/<x>bus/model.go` | `internal/models/<x>.go` | |
@@ -41,10 +41,10 @@ disk today; "target" = where the standard wants it after the migration plan is d
 
 | Old (Ardan Labs) | Current | Notes |
 |---|---|---|
-| `internal/app/domain/<x>app/` | `internal/handler/http/<x>/` | audit, auth, check, home, oauth, product, raw, tran, user, vproduct. `<x>app.go` → target `<x>_handler.go`, `model.go` → target `dto.go` |
+| `internal/app/domain/<x>app/` | `internal/handler/http/<x>/` | audit, auth, check, home, oauth, product, raw, tran, user, vproduct. `<x>app.go` → `<x>_handler.go`, `model.go` → `dto.go` |
 | `internal/app/domain/grpcauthapp/` | `internal/handler/grpc/auth/` | generated code → `internal/generated/authpb/`, `.proto` → `api/protobuf/authapp.proto` |
 | `internal/app/sdk/mid` | `internal/handler/http/mid` | |
-| `internal/app/sdk/mux` | `internal/handler/http/server` | `mux.go`; target `server.go` |
+| `internal/app/sdk/mux` | `internal/handler/http/server` | `mux.go` → `server.go` |
 | `internal/app/sdk/apitest` | `internal/handler/http/apitest` | |
 | `internal/app/sdk/query` | `internal/handler/http/query` | |
 | `internal/app/sdk/errs` | `internal/errors` | target: internal cause + safe external message |

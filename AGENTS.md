@@ -166,8 +166,7 @@ project-root/
 This repository is still migrating toward the standard (it started from the Ardan Labs
 template). Known gaps: `zarf/`
 instead of `docker/`, `db/`, `docs/`, `scripts/`; embedded single-file darwin migrations in
-`internal/sys/db/migrate/sql/` instead of `db/migrations` up/down; `api/frontends/admin`; legacy file names (`<x>bus.go`, `<x>db.go`,
-`<x>app.go`, `model.go`); no `tools/`/`bin/`. The step-by-step plan is in
+`internal/sys/db/migrate/sql/` instead of `db/migrations` up/down; `api/frontends/admin`; no `tools/`/`bin/`. The step-by-step plan is in
 `docs/MIGRATION_PLAN.md`. **New code must follow the standard; when touching legacy code,
 do not spread the legacy layout further.** Do not migrate a gap as a side effect of an
 unrelated task — migration steps are done deliberately, one at a time.

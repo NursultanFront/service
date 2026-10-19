@@ -36,7 +36,7 @@
 | Бизнес-логика | `internal/usecase/<x>/` (+ `deps.go` уже есть) | `internal/usecase/<entity>/deps.go + <entity>.go` | ✅ (имена файлов — (b)) |
 | БД-слой | `internal/repository/<x>/` | `internal/repository/<entity>/<entity>_repository.go` | ✅ (имена файлов — (b)) |
 | Модели | `internal/models/<x>.go`, `internal/models/types/*` | `internal/models/` | ✅ |
-| Имена файлов | `<x>bus.go`, `<x>db.go`, `<x>app.go`, `model.go`, `mux.go` | `<x>.go`, `<x>_repository.go`, `<x>_handler.go`, `dto.go`, `server.go` | (b) |
+| Имена файлов | ✅ переименованы | `<x>.go`, `<x>_repository.go`, `<x>_handler.go`, `dto.go`, `server.go` | (b) ✅ |
 | Ошибки | `internal/errors` (`errs.go`, `codes.go`): код + сообщение | внутренняя причина (лог) + внешнее сообщение (клиент) | (h) |
 | Инфраструктура | `internal/sys/*` + `pkg/foundation/*` (logger, web, otel, keystore, worker, docker) | `pkg/foundation` остаётся общим кодом для `cmd/*` | (f) отменён |
 | Контракты | `api/protobuf/authapp.proto` ✅, но в `api/` лежит фронтенд `api/frontends/admin` | `api/` — только `.proto`/OpenAPI | (g) |
@@ -114,7 +114,11 @@
   `go run` по AGENTS.md (*Local Development Workflow*).
 - **Зависит от:** (0).
 
-### (b) Переименование файлов под стандарт (без смены логики)
+### (b) Переименование файлов под стандарт (без смены логики) — ✅ выполнено 2026-10-19
+
+> Q3: `<entity>_repository.go` и в `postgres/`, `sqlite/`, `cache/`. Q4 снят: пакеты уже
+> `package user`/`audit`/…; алиасы импорта `userbus`/`userdb`/`userapp` остались. `apitest/model.go`
+> не трогали (тестовый хелпер, не DTO). 42 `git mv`, код не менялся.
 
 - **Цель:** имена файлов из стандарта; чисто механический шаг.
 - **Что:**

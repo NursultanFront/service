@@ -15,7 +15,7 @@ It comes in three coordinated pieces: the **seam** on the bus (Piece 1), the
 
 ## Checklist
 
-1. **Seam exists?** Confirm the target `internal/usecase/<x>/<x>bus.go` (target name `<x>.go`) has `ExtBusiness`, `Extension`,
+1. **Seam exists?** Confirm the target `internal/usecase/<x>/<x>.go` has `ExtBusiness`, `Extension`,
    and the reverse-apply loop in `NewBusiness`. If not, add them (piece 1).
 2. **Create** `internal/usecase/<x>/extensions/<x><concern>/<x><concern>.go` (piece 2).
 3. **Implement EVERY `ExtBusiness` method** — wrap the relevant ones, pass the rest
@@ -23,7 +23,7 @@ It comes in three coordinated pieces: the **seam** on the bus (Piece 1), the
    won't compile.
 4. **Wire** into `internal/app/<svc>/app.go` in the right order (piece 3).
 
-## Piece 1 — the seam (in `internal/usecase/<x>/<x>bus.go`, target name `<x>.go`)
+## Piece 1 — the seam (in `internal/usecase/<x>/<x>.go`)
 
 ```go
 // ExtBusiness lists every public method an extension can wrap.

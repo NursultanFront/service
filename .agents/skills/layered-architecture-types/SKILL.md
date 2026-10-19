@@ -29,16 +29,15 @@ response struct      ◄── fromBus<Type>Response / toApp<Type>             �
 ## Where each piece lives (`golang_project_structure.md`)
 
 Folder layout and file names follow the project standard `golang_project_structure.md`
-(Method 1, see AGENTS.md). Target file names per layer — legacy names in brackets are
-still on disk until the rename step of `docs/MIGRATION_PLAN.md` lands; do not create
-new files with legacy names:
+(Method 1, see AGENTS.md). File names per layer (renamed in migration step (b)); do not create new files with the
+legacy Ardan Labs names (`<x>bus.go`, `<x>db.go`, `<x>app.go`, `model.go`):
 
-| Layer      | Package                          | Target files                                                          |
+| Layer      | Package                          | Files                                                                 |
 |------------|----------------------------------|-----------------------------------------------------------------------|
-| Handler    | `internal/handler/http/<entity>` | `dto.go` (request/response + `toBus*`/`fromBus*Response`) [`model.go`], `<entity>_handler.go` [`<entity>app.go`] |
-| Usecase    | `internal/usecase/<entity>`      | `deps.go` (consumer interfaces), `<entity>.go` [`<entity>bus.go`]      |
+| Handler    | `internal/handler/http/<entity>` | `dto.go` (request/response + `toBus*`/`fromBus*Response`), `<entity>_handler.go` |
+| Usecase    | `internal/usecase/<entity>`      | `deps.go` (consumer interfaces), `<entity>.go`      |
 | Models     | `internal/models`                | `<entity>.go`; strong types in `internal/models/types/<type>/`         |
-| Repository | `internal/repository/<entity>`   | `<entity>_repository.go` [`<entity>db.go`], row structs + `toDB*`/`toBus*` in `dto.go` [`model.go`], optional `query.go` |
+| Repository | `internal/repository/<entity>`   | `<entity>_repository.go`, row structs + `toDB*`/`toBus*` in `dto.go`, optional `query.go` |
 
 ## User controls the types (MUST)
 
