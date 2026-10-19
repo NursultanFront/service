@@ -190,7 +190,15 @@
 - **Проверка:** чистая БД: up → down → up; `make test-only`; `make compose-build-up`.
 - **Зависит от:** (c) (папка `db/` в корне), (e) (CLI `migrate` в `bin/`).
 
-### (e) `tools/` + `bin/`
+### (e) `tools/` + `bin/` — ✅ выполнено 2026-10-19
+
+> Q8: staticcheck. `tools/go.mod` с `tool`-директивами (staticcheck, govulncheck, goimports,
+> protoc-gen-go, protoc-gen-go-grpc, expvarmon, hey), `tools/tools.go` — документация;
+> `make tools` → `bin/` (в `.gitignore`), `make tools-upgrade`. Таргеты `fmt`/`lint`/`vuln-check`/
+> метрики/нагрузка/`authapp-proto-gen` зовут `$(BIN)/<tool>`; `lint`/`vuln-check` исключают
+> `node_modules` (`make lint` теперь зелёный). `migrate` добавится в (d).
+> **Найдено:** `make vuln-check` падает и до шага — 12 уязвимостей stdlib Go 1.27.0 (исправлены в
+> go1.27.2) и `golang.org/x/net` (исправлено в v0.60.0); требует обновления toolchain — отдельно.
 
 - **Цель:** правило 3 стандарта — тулзы зафиксированы версиями.
 - **Что:** `tools/go.mod`, `tools/tools.go` (blank-imports или `tool`-директивы Go 1.24+)

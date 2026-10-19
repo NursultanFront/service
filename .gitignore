@@ -3,6 +3,8 @@
 .misc
 
 # Project
+# NOTE(AI): dev tools and binaries built from tools/ (migration step (e)).
+/bin/
 app/services/sales-api/sales-api
 app/services/metrics/metrics
 app/tooling/sales-admin/sales-admin

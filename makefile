@@ -144,14 +144,19 @@ endif
 # ==============================================================================
 # Install dependencies
 
-dev-gotooling:
-	go install github.com/divan/expvarmon@latest
-	go install github.com/rakyll/hey@latest
-	go install honnef.co/go/tools/cmd/staticcheck@latest
-	go install golang.org/x/vuln/cmd/govulncheck@latest
-	go install golang.org/x/tools/cmd/goimports@latest
-	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+# NOTE(AI): dev tools are pinned in tools/go.mod (tool directives) and built
+# into bin/ (migration step (e)); targets below call $(BIN)/<tool>.
+BIN := $(CURDIR)/bin
+
+.PHONY: tools tools-upgrade
+tools:
+	go -C tools build -o ../bin/ tool
+
+tools-upgrade:
+	go -C tools get -u tool
+	go -C tools mod tidy
+
+dev-gotooling: tools
 
 dev-brew:
 	brew update
@@ -397,10 +402,10 @@ token-gen:
 # Metrics and Tracing
 
 metrics-view-sc:
-	expvarmon -ports="localhost:3010" -vars="build,requests,goroutines,errors,panics,mem:memstats.HeapAlloc,mem:memstats.HeapSys,mem:memstats.Sys"
+	$(BIN)/expvarmon -ports="localhost:3010" -vars="build,requests,goroutines,errors,panics,mem:memstats.HeapAlloc,mem:memstats.HeapSys,mem:memstats.Sys"
 
 metrics-view:
-	expvarmon -ports="localhost:4020" -endpoint="/metrics" -vars="build,requests,goroutines,errors,panics,mem:memstats.HeapAlloc,mem:memstats.HeapSys,mem:memstats.Sys"
+	$(BIN)/expvarmon -ports="localhost:4020" -endpoint="/metrics" -vars="build,requests,goroutines,errors,panics,mem:memstats.HeapAlloc,mem:memstats.HeapSys,mem:memstats.Sys"
 
 grafana:
 	$(OPEN_CMD) http://localhost:3100/
@@ -422,14 +427,18 @@ test-only:
 	CGO_ENABLED=0 go test -count=1 ./...
 
 fmt:
-	goimports -w .
+	$(BIN)/goimports -w .
+
+# NOTE(AI): Go files vendored inside the frontend's node_modules are not ours.
+GO_PKGS = $(shell go list ./... | grep -v /node_modules/)
 
 lint:
-	CGO_ENABLED=0 go vet ./...
-	staticcheck -checks=all ./...
+	@echo "go vet + staticcheck (node_modules excluded)"
+	@CGO_ENABLED=0 go vet $(GO_PKGS)
+	@$(BIN)/staticcheck -checks=all $(GO_PKGS)
 
 vuln-check:
-	govulncheck ./...
+	@$(BIN)/govulncheck $(GO_PKGS)
 
 test: test-only lint vuln-check
 
@@ -467,7 +476,7 @@ users-timeout:
 	-H "Authorization: Bearer ${TOKEN}" "http://localhost:3000/v1/users?page=1&rows=2"
 
 load:
-	hey -m GET -c 100 -n 1000 \
+	$(BIN)/hey -m GET -c 100 -n 1000 \
 	-H "Authorization: Bearer ${TOKEN}" "http://localhost:3000/v1/users?page=1&rows=2"
 
 otel-test:
@@ -479,7 +488,8 @@ otel-test:
 # Protobuf support
 
 authapp-proto-gen:
-	protoc --go_out=internal/generated/authpb --go_opt=paths=source_relative \
+	protoc --plugin=protoc-gen-go=$(BIN)/protoc-gen-go --plugin=protoc-gen-go-grpc=$(BIN)/protoc-gen-go-grpc \
+		--go_out=internal/generated/authpb --go_opt=paths=source_relative \
 		--go-grpc_out=internal/generated/authpb --go-grpc_opt=paths=source_relative \
 		--proto_path=api/protobuf \
 		api/protobuf/authapp.proto
@@ -529,7 +539,7 @@ curl-auth:
 	curl -i -H "Authorization: Bearer ${TOKEN}" http://localhost:3000/v1/hackauth
 
 load-hack:
-	hey -m GET -c 100 -n 100000 "http://localhost:3000/v1/hack"
+	$(BIN)/hey -m GET -c 100 -n 100000 "http://localhost:3000/v1/hack"
 
 admin:
 	go run cmd/admin/main.go
@@ -579,7 +589,7 @@ talk-apply:
 talk-run: build talk-up talk-load talk-apply
 
 talk-run-load:
-	hey -m GET -c 10 -n 1000 -H "Authorization: Bearer ${TOKEN}" "http://localhost:3000/v1/users?page=1&rows=2"
+	$(BIN)/hey -m GET -c 10 -n 1000 -H "Authorization: Bearer ${TOKEN}" "http://localhost:3000/v1/users?page=1&rows=2"
 
 talk-logs:
 	kubectl logs --namespace=$(NAMESPACE) -l app=$(SALES_APP) --all-containers=true -f --tail=100 --max-log-requests=6
@@ -597,7 +607,7 @@ talk-describe-min:
 	kubectl describe pod --namespace=$(NAMESPACE) -l app=$(SALES_APP) | grep -i -A 21 '  sales:' | sed -n '1p;3p;11,16p;18,22p'
 
 talk-metrics:
-	expvarmon -ports="localhost:4000" -vars="build,requests,goroutines,errors,panics,mem:memstats.HeapAlloc,mem:memstats.HeapSys,mem:memstats.Sys"
+	$(BIN)/expvarmon -ports="localhost:4000" -vars="build,requests,goroutines,errors,panics,mem:memstats.HeapAlloc,mem:memstats.HeapSys,mem:memstats.Sys"
 
 # ==============================================================================
 # Admin Frontend
