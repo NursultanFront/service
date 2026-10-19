@@ -56,7 +56,7 @@ Go is the primary codebase, not the only one.
 | Admin frontend  | `api/frontends/admin/src` (`.vue`, `.js`, `.scss`)         | Vue SFC structure, component `props`/`emits` contracts, reactivity, async/`fetch` error handling, accessibility, leaked watchers/listeners. |
 | Auth policies   | `internal/sys/auth/rego` (`.rego`)                         | OPA/Rego rules: default-deny posture, `input` shape assumptions, unintended allows.                                                         |
 | gRPC contracts  | `api/protobuf` (`.proto`)                                  | Field-number stability, backward/forward compatibility, breaking changes.                                                                   |
-| Database        | `internal/sys/db/migrate/sql` (target `db/`) (`.sql`)      | Migration reversibility/idempotency, indexing, locking, destructive changes, seed correctness.                                              |
+| Database        | `db/migrations`, `db/fixtures` (`.sql`)                    | Migration reversibility/idempotency, indexing, locking, destructive changes, seed correctness.                                              |
 | Deploy / config | `docker/**`, `deploy/**`, `docker-compose.yaml`, `*.conf` | Helm/k8s manifests: resource limits, secrets handling, probes, value templating.                                                            |
 | Scripts         | `*.sh`                                                     | Shell safety: `set -euo pipefail`, quoting, exit-code handling.                                                                             |
 

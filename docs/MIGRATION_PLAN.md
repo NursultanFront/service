@@ -41,7 +41,7 @@
 | Инфраструктура | `internal/sys/*` + `pkg/foundation/*` (logger, web, otel, keystore, worker, docker) | `pkg/foundation` остаётся общим кодом для `cmd/*` | (f) отменён |
 | Контракты | `api/protobuf/authapp.proto` ✅, но в `api/` лежит фронтенд `api/frontends/admin` | `api/` — только `.proto`/OpenAPI | (g) |
 | Деплой/инфра | ✅ `docker/`, `deploy/{k8s,helm,keys}`, `docs/prompts`, `docker-compose.yaml` + `.env.example` | `docker/`, `docker-compose.yaml` + `.env.example` в корне, `docs/`, `scripts/` | (c) ✅ |
-| Миграции БД | darwin, один файл `internal/sys/db/migrate/sql/migrate.sql` + `seed.sql` (embed) | `db/migrations/NNNNNN_*.up/down.sql`, `db/fixtures/*.sql` | (d) |
+| Миграции БД | ✅ golang-migrate, `db/migrations` + `db/fixtures` | `db/migrations/NNNNNN_*.up/down.sql`, `db/fixtures/*.sql` | (d) ✅ |
 | Dev-тулзы | `go install …@latest` в `makefile` (staticcheck, govulncheck, goimports, protoc-gen-go…) | `tools/` (свой `go.mod`, `tools.go`) → `bin/` | (e) |
 | Фоновые процессы | нет `internal/workers` | `internal/workers/` при появлении | — |
 
@@ -182,7 +182,16 @@
 - **Проверка:** `make compose-build-up`, k8s/Tilt-таргеты `makefile`, `go vet ./...`.
 - **Зависит от:** — (лучше после (a)).
 
-### (d) Миграции: darwin single-file → `db/migrations` up/down + `db/fixtures`
+### (d) Миграции: darwin single-file → `db/migrations` up/down + `db/fixtures` — ✅ выполнено 2026-10-19
+
+> Q7: golang-migrate v4.20.1. `db/migrations/000001…000005_*.up/down.sql` (DDL без изменений,
+> down-миграции написаны впервые), `db/fixtures/seed_test_data.sql`, embed через пакет `db`
+> (`db/db.go`, т.к. `//go:embed` не видит файлы выше пакета). `internal/sys/db/migrate` —
+> golang-migrate (драйвер `postgres` + `WithConnection` на отдельном соединении, пул приложения
+> не закрывается) с авто-baseline: если есть `darwin_migrations`, а версии golang-migrate нет —
+> `Force(N)` по max darwin-версии (1.05 → 5). CLI `bin/migrate` (tools, тег `postgres`), таргеты
+> `migrate-create`/`migrate-up`/`migrate-down`. darwin удалён из go.mod. Проверено: up→down→up на
+> чистой БД, baseline на имитации darwin-БД, `make test-only`, compose на реальной dev-БД.
 
 - **Цель:** раздел про `db/` стандарта.
 - **Что:** разрезать `internal/sys/db/migrate/sql/migrate.sql` (darwin, версии внутри

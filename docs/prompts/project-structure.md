@@ -29,7 +29,7 @@ disk today; "target" = where the standard wants it after the migration plan is d
 | `internal/business/domain/<x>bus/model.go` | `internal/models/<x>.go` | |
 | `internal/business/types/*` | `internal/models/types/*` | domain, home, money, name, password, quantity, role |
 | `internal/business/sdk/sqldb` | `internal/sys/db` | incl. `dbarray`, `dialect` |
-| `internal/business/sdk/migrate` | `internal/sys/db/migrate` | SQL in `internal/sys/db/migrate/sql/`; target `db/migrations` + `db/fixtures` |
+| `internal/business/sdk/migrate` | `internal/sys/db/migrate` (golang-migrate runner) | SQL in `db/migrations` + `db/fixtures`, embedded by package `db` |
 | `internal/business/sdk/dbtest` | `internal/sys/dbtest` | |
 | `internal/business/sdk/order` | `internal/sys/order` | |
 | `internal/business/sdk/page` | `internal/sys/page` | |

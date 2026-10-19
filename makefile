@@ -150,7 +150,7 @@ BIN := $(CURDIR)/bin
 
 .PHONY: tools tools-upgrade
 tools:
-	go -C tools build -o ../bin/ tool
+	go -C tools build -tags postgres -o ../bin/ tool
 
 tools-upgrade:
 	go -C tools get -u tool
@@ -379,6 +379,20 @@ compose-logs:
 
 # ==============================================================================
 # Administration
+
+# NOTE(AI): golang-migrate CLI (migration step (d)). Services and tests apply the
+# embedded migrations via `admin migrate`; these targets are for authoring and
+# manual runs against the compose database.
+MIGRATE_DB_URL ?= postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
+
+migrate-create:
+	$(BIN)/migrate create -ext sql -dir db/migrations -seq $(NAME)
+
+migrate-up:
+	$(BIN)/migrate -path db/migrations -database "$(MIGRATE_DB_URL)" up
+
+migrate-down:
+	$(BIN)/migrate -path db/migrations -database "$(MIGRATE_DB_URL)" down 1
 
 migrate:
 	export SALES_DB_HOST=localhost; go run cmd/admin/main.go migrate
