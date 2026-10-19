@@ -30,7 +30,7 @@ type config struct {
 		DisableTLS   bool   `conf:"default:true"`
 	}
 	Auth struct {
-		KeysFolder string `conf:"default:zarf/keys/"`
+		KeysFolder string `conf:"default:deploy/keys/"`
 		DefaultKID string `conf:"default:54bb2165-71e1-41a6-af3e-7da4a0e1e2c1"`
 	}
 }

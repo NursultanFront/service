@@ -30,7 +30,7 @@ api/cmd/frontends/admin/.env
 # Folders
 _obj
 _test
-zarf/build/
+deploy/build/
 vendor/
 
 # Editor files
@@ -56,4 +56,4 @@ _testmain.go
 *.exe
 //*.test
 .vscode/tasks.json
-zarf/compose/database-data/data
+docker/database-data/

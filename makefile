@@ -187,7 +187,7 @@ build: sales metrics auth
 
 sales:
 	docker build \
-		-f zarf/docker/dockerfile.sales \
+		-f docker/dockerfile.sales \
 		-t $(SALES_IMAGE) \
 		--build-arg BUILD_TAG=$(VERSION) \
 		--build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
@@ -195,7 +195,7 @@ sales:
 
 metrics:
 	docker build \
-		-f zarf/docker/dockerfile.metrics \
+		-f docker/dockerfile.metrics \
 		-t $(METRICS_IMAGE) \
 		--build-arg BUILD_TAG=$(VERSION) \
 		--build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
@@ -203,7 +203,7 @@ metrics:
 
 auth:
 	docker build \
-		-f zarf/docker/dockerfile.auth \
+		-f docker/dockerfile.auth \
 		-t $(AUTH_IMAGE) \
 		--build-arg BUILD_TAG=$(VERSION) \
 		--build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
@@ -220,7 +220,7 @@ dev-up:
 	kind create cluster \
 		--image $(KIND) \
 		--name $(KIND_CLUSTER) \
-		--config zarf/k8s/dev/kind-config.yaml
+		--config deploy/k8s/dev/kind-config.yaml
 
 	kubectl wait --timeout=120s --namespace=local-path-storage --for=condition=Available deployment/local-path-provisioner
 
@@ -236,7 +236,7 @@ dev-down:
 	kind delete cluster --name $(KIND_CLUSTER)
 
 dev-up-registry:
-	KIND_CLUSTER_NAME=$(KIND_CLUSTER) ./zarf/k8s/dev/kind-with-registry.sh
+	KIND_CLUSTER_NAME=$(KIND_CLUSTER) ./deploy/k8s/dev/kind-with-registry.sh
 
 dev-down-registry:
 	kind delete cluster --name $(KIND_CLUSTER)
@@ -260,19 +260,19 @@ dev-load:
 	wait;
 
 dev-apply:
-	kustomize build zarf/k8s/dev/grafana | kubectl apply -f -
-	kustomize build zarf/k8s/dev/prometheus | kubectl apply -f -
-	kustomize build zarf/k8s/dev/tempo | kubectl apply -f -
-	kustomize build zarf/k8s/dev/loki | kubectl apply -f -
-	kustomize build zarf/k8s/dev/alloy | kubectl apply -f -
+	kustomize build deploy/k8s/dev/grafana | kubectl apply -f -
+	kustomize build deploy/k8s/dev/prometheus | kubectl apply -f -
+	kustomize build deploy/k8s/dev/tempo | kubectl apply -f -
+	kustomize build deploy/k8s/dev/loki | kubectl apply -f -
+	kustomize build deploy/k8s/dev/alloy | kubectl apply -f -
 
-	kustomize build zarf/k8s/dev/database | kubectl apply -f -
+	kustomize build deploy/k8s/dev/database | kubectl apply -f -
 	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s sts/database
 
-	kustomize build zarf/k8s/dev/auth | kubectl apply -f -
+	kustomize build deploy/k8s/dev/auth | kubectl apply -f -
 	kubectl wait pods --namespace=$(NAMESPACE) --selector app=$(AUTH_APP) --timeout=120s --for=condition=Ready
 
-	kustomize build zarf/k8s/dev/sales | kubectl apply -f -
+	kustomize build deploy/k8s/dev/sales | kubectl apply -f -
 	kubectl wait pods --namespace=$(NAMESPACE) --selector app=$(SALES_APP) --timeout=120s --for=condition=Ready
 
 dev-restart:
@@ -334,12 +334,12 @@ dev-logs-alloy:
 # ------------------------------------------------------------------------------
 
 dev-services-delete:
-	kustomize build zarf/k8s/dev/sales | kubectl delete -f -
-	kustomize build zarf/k8s/dev/grafana | kubectl delete -f -
-	kustomize build zarf/k8s/dev/tempo | kubectl delete -f -
-	kustomize build zarf/k8s/dev/loki | kubectl delete -f -
-	kustomize build zarf/k8s/dev/alloy | kubectl delete -f -
-	kustomize build zarf/k8s/dev/database | kubectl delete -f -
+	kustomize build deploy/k8s/dev/sales | kubectl delete -f -
+	kustomize build deploy/k8s/dev/grafana | kubectl delete -f -
+	kustomize build deploy/k8s/dev/tempo | kubectl delete -f -
+	kustomize build deploy/k8s/dev/loki | kubectl delete -f -
+	kustomize build deploy/k8s/dev/alloy | kubectl delete -f -
+	kustomize build deploy/k8s/dev/database | kubectl delete -f -
 
 dev-describe-replicaset:
 	kubectl get rs
@@ -367,15 +367,15 @@ dev-database-restart:
 # Docker Compose
 
 compose-up:
-	cd ./zarf/compose/ && docker compose -f docker_compose.yaml -p compose up -d
+	docker compose -f docker-compose.yaml -p compose up -d
 
 compose-build-up: build compose-up
 
 compose-down:
-	cd ./zarf/compose/ && docker compose -f docker_compose.yaml down
+	docker compose -f docker-compose.yaml -p compose down
 
 compose-logs:
-	cd ./zarf/compose/ && docker compose -f docker_compose.yaml logs
+	docker compose -f docker-compose.yaml -p compose logs
 
 # ==============================================================================
 # Administration
@@ -564,7 +564,7 @@ talk-up:
 	kind create cluster \
 		--image $(KIND) \
 		--name $(KIND_CLUSTER) \
-		--config zarf/k8s/dev/kind-config.yaml
+		--config deploy/k8s/dev/kind-config.yaml
 
 	kubectl wait --timeout=120s --namespace=local-path-storage --for=condition=Available deployment/local-path-provisioner
 
@@ -577,13 +577,13 @@ talk-load:
 	wait;
 
 talk-apply:
-	kustomize build zarf/k8s/dev/database | kubectl apply -f -
+	kustomize build deploy/k8s/dev/database | kubectl apply -f -
 	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s sts/database
 
-	kustomize build zarf/k8s/dev/auth | kubectl apply -f -
+	kustomize build deploy/k8s/dev/auth | kubectl apply -f -
 	kubectl wait pods --namespace=$(NAMESPACE) --selector app=$(AUTH_APP) --timeout=120s --for=condition=Ready
 
-	kustomize build zarf/k8s/dev/sales | kubectl apply -f -
+	kustomize build deploy/k8s/dev/sales | kubectl apply -f -
 	kubectl wait pods --namespace=$(NAMESPACE) --selector app=$(SALES_APP) --timeout=120s --for=condition=Ready
 
 talk-run: build talk-up talk-load talk-apply
@@ -729,10 +729,10 @@ chart-install:
 		echo "Example: make chart-install CHART=sales ENV=prod"; \
 		exit 1; \
 	fi
-	helm install $(CHART) ./zarf/helm/charts/$(CHART) \
+	helm install $(CHART) ./deploy/helm/charts/$(CHART) \
 		--namespace $(NAMESPACE) \
 		--create-namespace \
-		--values ./zarf/helm/charts/$(CHART)/values-$(ENV).yaml \
+		--values ./deploy/helm/charts/$(CHART)/values-$(ENV).yaml \
 		--wait \
 		--timeout 10m
 
@@ -743,9 +743,9 @@ chart-upgrade:
 		echo "Example: make chart-upgrade CHART=sales ENV=prod"; \
 		exit 1; \
 	fi
-	helm upgrade $(CHART) ./zarf/helm/charts/$(CHART) \
+	helm upgrade $(CHART) ./deploy/helm/charts/$(CHART) \
 		--namespace $(NAMESPACE) \
-		--values ./zarf/helm/charts/$(CHART)/values-$(ENV).yaml \
+		--values ./deploy/helm/charts/$(CHART)/values-$(ENV).yaml \
 		--wait \
 		--timeout 10m
 
@@ -765,8 +765,8 @@ chart-template:
 		echo "Example: make chart-template CHART=sales ENV=dev"; \
 		exit 1; \
 	fi
-	helm template $(CHART) ./zarf/helm/charts/$(CHART) \
-		--values ./zarf/helm/charts/$(CHART)/values-$(ENV).yaml \
+	helm template $(CHART) ./deploy/helm/charts/$(CHART) \
+		--values ./deploy/helm/charts/$(CHART)/values-$(ENV).yaml \
 		--debug
 
 # Lint individual chart
@@ -776,4 +776,4 @@ chart-lint:
 		echo "Example: make chart-lint CHART=sales"; \
 		exit 1; \
 	fi
-	helm lint ./zarf/helm/charts/$(CHART)
+	helm lint ./deploy/helm/charts/$(CHART)

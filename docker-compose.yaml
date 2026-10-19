@@ -7,8 +7,8 @@ services:
     environment:
       - POSTGRES_PASSWORD=postgres
     volumes:
-      - ./database-data:/var/lib/postgresql/18/docker
-      - ./pg_hba.conf:/etc/pg_hba.conf
+      - ./docker/database-data:/var/lib/postgresql/18/docker
+      - ./docker/pg_hba.conf:/etc/pg_hba.conf
     command: ["-c", "hba_file=/etc/pg_hba.conf"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -h localhost -U postgres"]

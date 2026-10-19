@@ -4,10 +4,13 @@
 .dockerignore
 .gitignore
 apis/programs/frontends/
-zarf/docker/
-zarf/k8s/
+deploy/k8s/
+deploy/helm/
+bin/
+docs/
 CONTRIBUTORS
 LICENSE
 makefile
 README.md
-!zarf/compose/database-data
+# NOTE(AI): local Postgres data must never enter the build context (step (c)).
+docker/database-data/

@@ -24,7 +24,7 @@ type Config struct {
 	}
 	Auth struct {
 		KeysJSON   string `conf:"mask"`
-		KeysFolder string `conf:"default:zarf/keys/"`
+		KeysFolder string `conf:"default:deploy/keys/"`
 		ActiveKID  string `conf:"default:54bb2165-71e1-41a6-af3e-7da4a0e1e2c1"`
 		Issuer     string `conf:"default:service project"`
 	}

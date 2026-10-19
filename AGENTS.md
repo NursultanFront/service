@@ -168,8 +168,7 @@ project-root/
 ### Current state vs the standard
 
 This repository is still migrating toward the standard (it started from the Ardan Labs
-template). Known gaps: `zarf/`
-instead of `docker/`, `db/`, `docs/`, `scripts/`; embedded single-file darwin migrations in
+template). Known gaps: embedded single-file darwin migrations in
 `internal/sys/db/migrate/sql/` instead of `db/migrations` up/down; `api/frontends/admin`. The step-by-step plan is in
 `docs/MIGRATION_PLAN.md`. **New code must follow the standard; when touching legacy code,
 do not spread the legacy layout further.** Do not migrate a gap as a side effect of an
@@ -183,7 +182,7 @@ Combine two modes — do not default to full Docker rebuilds for every small cha
   service directly with `go run`, against the already-running Postgres container. This takes
   seconds per iteration instead of minutes, and creates zero Docker image/layer clutter.
   ```bash
-  export SALES_DB_HOST=localhost:5434  # host:port mapped to Postgres, see docker_compose.yaml
+  export SALES_DB_HOST=localhost:5434  # host:port mapped to Postgres, see docker-compose.yaml
   export SALES_AUTH_HOST=http://localhost:6060   # docker-network name "auth" only resolves inside compose
   export SALES_WEB_CORS_ALLOWED_ORIGINS=http://localhost:3001
   go run cmd/sales/main.go
@@ -211,7 +210,7 @@ Combine two modes — do not default to full Docker rebuilds for every small cha
   `pkg/foundation/web/web.go`'s CORS handling). The httpOnly auth cookie flow only works when the
   frontend's exact origin (`http://localhost:3001` in dev) is explicitly configured via
   `SALES_WEB_CORS_ALLOWED_ORIGINS` / `AUTH_WEB_CORS_ALLOWED_ORIGINS` — set it explicitly in
-  both `go run` env vars and `docker_compose.yaml`, don't rely on the wildcard default.
+  both `go run` env vars and `docker-compose.yaml`, don't rely on the wildcard default.
 
 ## Tools
 

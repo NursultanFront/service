@@ -26,7 +26,7 @@ ARG BUILD_DATE
 ARG BUILD_TAG
 RUN addgroup -g 1000 -S auth && \
     adduser -u 1000 -h /service -G auth -S auth
-COPY --from=build_auth --chown=auth:auth /service/zarf/keys/. /service/zarf/keys/.
+COPY --from=build_auth --chown=auth:auth /service/deploy/keys/. /service/deploy/keys/.
 COPY --from=build_auth --chown=auth:auth /service/cmd/auth/auth /service/auth
 WORKDIR /service
 USER auth

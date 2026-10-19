@@ -61,6 +61,7 @@ disk today; "target" = where the standard wants it after the migration plan is d
 | `api/services/<svc>` | `cmd/<svc>` | stays `cmd/<svc>` in this repo (decision 2026-10-18) + `internal/app/<svc>` + `internal/config/<svc>` |
 | `api/tooling/{admin,logfmt}` | `cmd/admin`, `cmd/logfmt` | see `docs/MIGRATION_PLAN.md`, step (i) |
 | `api/frontends/admin` | `api/frontends/admin` | out of `api/` (see `docs/MIGRATION_PLAN.md`, step (g)) |
-| `zarf/docker/*` | `zarf/docker/*` | `docker/` |
-| `zarf/compose/docker_compose.yaml` | same | `docker-compose.yaml` in repo root |
-| `zarf/k8s`, `zarf/helm`, `zarf/keys` | same | see `docs/MIGRATION_PLAN.md`, step (c) |
+| `zarf/docker/*` | `docker/*` | |
+| `zarf/compose/docker_compose.yaml` | `docker-compose.yaml` (root), `docker/pg_hba.conf`, data in `docker/database-data` (gitignored) | |
+| `zarf/k8s`, `zarf/helm`, `zarf/keys` | `deploy/k8s`, `deploy/helm`, `deploy/keys` | |
+| `zarf/prompts` | `docs/prompts` | |

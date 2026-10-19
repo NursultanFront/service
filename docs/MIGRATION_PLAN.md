@@ -3,7 +3,7 @@
 Стандарт структуры — [`golang_project_structure.md`](../golang_project_structure.md)
 (Метод 1, разбиение по слоям). Правила для агентов и порядок старшинства документов —
 [`AGENTS.md`](../AGENTS.md), раздел *Project Structure & Architecture Standard*.
-Карта старых путей Ardan Labs → текущие — [`zarf/prompts/project-structure.md`](../zarf/prompts/project-structure.md).
+Карта старых путей Ardan Labs → текущие — [`docs/prompts/project-structure.md`](prompts/project-structure.md).
 
 Принципы миграции:
 
@@ -40,7 +40,7 @@
 | Ошибки | `internal/errors` (`errs.go`, `codes.go`): код + сообщение | внутренняя причина (лог) + внешнее сообщение (клиент) | (h) |
 | Инфраструктура | `internal/sys/*` + `pkg/foundation/*` (logger, web, otel, keystore, worker, docker) | `pkg/foundation` остаётся общим кодом для `cmd/*` | (f) отменён |
 | Контракты | `api/protobuf/authapp.proto` ✅, но в `api/` лежит фронтенд `api/frontends/admin` | `api/` — только `.proto`/OpenAPI | (g) |
-| Деплой/инфра | `zarf/{docker,compose,k8s,helm,keys,prompts}` | `docker/`, `docker-compose.yaml` + `.env.example` в корне, `docs/`, `scripts/` | (c) |
+| Деплой/инфра | ✅ `docker/`, `deploy/{k8s,helm,keys}`, `docs/prompts`, `docker-compose.yaml` + `.env.example` | `docker/`, `docker-compose.yaml` + `.env.example` в корне, `docs/`, `scripts/` | (c) ✅ |
 | Миграции БД | darwin, один файл `internal/sys/db/migrate/sql/migrate.sql` + `seed.sql` (embed) | `db/migrations/NNNNNN_*.up/down.sql`, `db/fixtures/*.sql` | (d) |
 | Dev-тулзы | `go install …@latest` в `makefile` (staticcheck, govulncheck, goimports, protoc-gen-go…) | `tools/` (свой `go.mod`, `tools.go`) → `bin/` | (e) |
 | Фоновые процессы | нет `internal/workers` | `internal/workers/` при появлении | — |
@@ -153,7 +153,16 @@
 - **Проверка:** `go vet ./...`, `make test-only`, `rg 'internal/usecase' internal/repository` → пусто.
 - **Зависит от:** (b).
 
-### (c) `zarf/` → `docker/`, `docs/`, `scripts/`; compose и `.env.example` в корень
+### (c) `zarf/` → `docker/`, `docs/`, `scripts/`; compose и `.env.example` в корень — ✅ выполнено 2026-10-19
+
+> Q5: `deploy/k8s`, `deploy/helm`; Q6: `deploy/keys` (dev-ключ остаётся в git; дефолт
+> `AUTH_AUTH_KEYS_FOLDER`/admin = `deploy/keys/`). `zarf/docker/*` → `docker/`, compose →
+> `docker-compose.yaml` в корне (`-p compose` сохранён, имена контейнеров/volumes те же),
+> `pg_hba.conf` → `docker/`, данные Postgres перенесены в `docker/database-data` (gitignore +
+> .dockerignore — раньше `!zarf/compose/database-data` тащил БД в build context), `zarf/prompts` →
+> `docs/prompts`, Tilt собирает в `bin/`. `.env.example` (64 переменные) сгенерирован из `--help`.
+> `scripts/` не создан — отдельных shell-скриптов в makefile нет (`kind-with-registry.sh` остался в
+> `deploy/k8s/dev`).
 
 - **Цель:** корень репо как в стандарте.
 - **Что:**
@@ -162,7 +171,7 @@
     `docker/`; **`zarf/compose/database-data/` — данные Postgres, не переносить в git**,
     добавить в `.gitignore` / вынести в volume;
   - создать `.env.example` со всеми `SALES_*`, `AUTH_*`, `METRICS_*` переменными;
-  - `zarf/prompts/*` → `docs/` (AI-инструкции), `localrun.md` в `docs/`;
+  - `docs/prompts/*` → `docs/` (AI-инструкции), `localrun.md` в `docs/`;
   - `zarf/k8s`, `zarf/helm` → Q5, `zarf/keys` → Q6;
   - shell-скрипты из `makefile` → `scripts/`.
 - **Затрагивает:** `makefile` (≈33 упоминания `zarf`), `zarf/k8s/dev/Tiltfile`,
