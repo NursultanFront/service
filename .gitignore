@@ -14,7 +14,7 @@ app/tooling/sales-admin/docs
 database-data/
 
 # Environment
-api/cmd/frontends/admin/.env
+frontend/admin/.env
 
 # Mac
 .DS_Store

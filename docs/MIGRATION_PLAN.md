@@ -39,7 +39,7 @@
 | Имена файлов | ✅ переименованы | `<x>.go`, `<x>_repository.go`, `<x>_handler.go`, `dto.go`, `server.go` | (b) ✅ |
 | Ошибки | `internal/errors` (`errs.go`, `codes.go`): код + сообщение | внутренняя причина (лог) + внешнее сообщение (клиент) | (h) |
 | Инфраструктура | `internal/sys/*` + `pkg/foundation/*` (logger, web, otel, keystore, worker, docker) | `pkg/foundation` остаётся общим кодом для `cmd/*` | (f) отменён |
-| Контракты | `api/protobuf/authapp.proto` ✅, но в `api/` лежит фронтенд `api/frontends/admin` | `api/` — только `.proto`/OpenAPI | (g) |
+| Контракты | ✅ `api/protobuf/authapp.proto`, фронтенд в `frontend/admin` | `api/` — только `.proto`/OpenAPI | (g) ✅ |
 | Деплой/инфра | ✅ `docker/`, `deploy/{k8s,helm,keys}`, `docs/prompts`, `docker-compose.yaml` + `.env.example` | `docker/`, `docker-compose.yaml` + `.env.example` в корне, `docs/`, `scripts/` | (c) ✅ |
 | Миграции БД | ✅ golang-migrate, `db/migrations` + `db/fixtures` | `db/migrations/NNNNNN_*.up/down.sql`, `db/fixtures/*.sql` | (d) ✅ |
 | Dev-тулзы | `go install …@latest` в `makefile` (staticcheck, govulncheck, goimports, protoc-gen-go…) | `tools/` (свой `go.mod`, `tools.go`) → `bin/` | (e) |
@@ -247,7 +247,11 @@
 - **Проверка:** `go vet ./...`, `make test-only`, `rg "pkg/foundation"` → пусто.
 - **Зависит от:** (0). Должен быть **до** (i).
 
-### (g) `api/frontends/admin` вон из `api/`
+### (g) `api/frontends/admin` вон из `api/` — ✅ выполнено 2026-10-19
+
+> Q9: `frontend/admin` в этом репо. Перенесено целиком (вместе с локальными `node_modules`/`dist`,
+> которые не в git); `ADMIN_FRONTEND_PREFIX`, `.gitignore` (`frontend/admin/.env`), `.dockerignore`
+> (`frontend/` вне build context), скилл review-pr обновлены. `api/` = только `protobuf/`.
 
 - **Цель:** `api/` — только контракты.
 - **Варианты (Q9 — решение за пользователем):** отдельный репозиторий (логично, если

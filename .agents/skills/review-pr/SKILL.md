@@ -53,7 +53,7 @@ Go is the primary codebase, not the only one.
 | Area            | Where                                                      | Lens focus for this language                                                                                                                |
 |-----------------|------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
 | Go services     | `cmd/**`, `internal/**`, `pkg/foundation/**` (`.go`)       | Full Go review; the layered type rules and Go skills apply here.                                                                            |
-| Admin frontend  | `api/frontends/admin/src` (`.vue`, `.js`, `.scss`)         | Vue SFC structure, component `props`/`emits` contracts, reactivity, async/`fetch` error handling, accessibility, leaked watchers/listeners. |
+| Admin frontend  | `frontend/admin/src` (`.vue`, `.js`, `.scss`)              | Vue SFC structure, component `props`/`emits` contracts, reactivity, async/`fetch` error handling, accessibility, leaked watchers/listeners. |
 | Auth policies   | `internal/sys/auth/rego` (`.rego`)                         | OPA/Rego rules: default-deny posture, `input` shape assumptions, unintended allows.                                                         |
 | gRPC contracts  | `api/protobuf` (`.proto`)                                  | Field-number stability, backward/forward compatibility, breaking changes.                                                                   |
 | Database        | `db/migrations`, `db/fixtures` (`.sql`)                    | Migration reversibility/idempotency, indexing, locking, destructive changes, seed correctness.                                              |
@@ -183,7 +183,7 @@ Overall Gate: G[0-4] — <Clear/Polish/Tighten/Repair/Stop>
 
 ## Suggested verification
 - Go: `make test-only`, or `go test ./path/...` for a single package.
-- Frontend: the project's JS test/lint/build scripts in `api/frontends/admin`.
+- Frontend: the project's JS test/lint/build scripts in `frontend/admin`.
 - SQL/Rego/proto: the relevant migration, policy, or codegen check for that area.
 - Re-run affected lenses after fixes.
 ```

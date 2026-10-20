@@ -3,7 +3,7 @@
 .reading/
 .dockerignore
 .gitignore
-apis/programs/frontends/
+frontend/
 deploy/k8s/
 deploy/helm/
 bin/

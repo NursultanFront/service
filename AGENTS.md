@@ -168,7 +168,7 @@ project-root/
 ### Current state vs the standard
 
 This repository is still migrating toward the standard (it started from the Ardan Labs
-template). Known gaps: `api/frontends/admin`. Migrations live in `db/migrations`
+template). Admin frontend: `frontend/admin`. Migrations live in `db/migrations`
 (golang-migrate `NNNNNN_<name>.up.sql`/`.down.sql`, embedded via package `db`; new file:
 `make migrate-create NAME=<name>`), seed data in `db/fixtures`. The step-by-step plan is in
 `docs/MIGRATION_PLAN.md`. **New code must follow the standard; when touching legacy code,
