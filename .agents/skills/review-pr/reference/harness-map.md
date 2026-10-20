@@ -25,7 +25,7 @@ regression.
   Verify with `make test-only` or a targeted `go test ./path/...`.
 - **Vue/JS**: component and unit tests for rendering, `props`/`emits` contracts,
   user interactions, and async/error states; verify with the frontend's test
-  script under `api/frontends/admin`.
+  script under `frontend/admin`.
 - **SQL / Rego / proto**: migration up/down checks, policy allow/deny cases, and
   contract/codegen checks for the changed area.
 - For changes with no automated test path, say so and recommend the manual check.

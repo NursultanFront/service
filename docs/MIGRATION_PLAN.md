@@ -1,0 +1,399 @@
+# План миграции к стандарту `golang_project_structure.md`
+
+Стандарт структуры — [`golang_project_structure.md`](../golang_project_structure.md)
+(Метод 2, доменная раскладка `internal/<domain>/{models,usecase,repository}`
+как в `typespace` — с 2026-10-20, см. шаг (j); до этого был Метод 1). Правила для агентов и порядок старшинства документов —
+[`AGENTS.md`](../AGENTS.md), раздел *Project Structure & Architecture Standard*.
+Карта старых путей Ardan Labs → текущие — [`docs/prompts/project-structure.md`](prompts/project-structure.md).
+
+Принципы миграции:
+
+- **Один шаг — одна ветка/PR.** Шаги не смешиваются с фичами и друг с другом.
+- **Без смены логики**, кроме шага (h) (ошибки), где поведение меняется осознанно.
+- Паттерны кода внутри слоёв (строгие типы `internal/types/*`, конвертеры
+  `toBus*`/`toDB*`/`fromBus*Response`/`toApp*`, декораторы `ExtBusiness`/`Extension`)
+  **сохраняются** — меняется только структура.
+- Проверка после каждого шага минимум: `go vet ./...` и `make test-only`; для шагов,
+  которые трогают сборку/запуск, ещё `make compose-build-up` (и `docker image prune -f`).
+- **Решения пользователя 2026-10-18** (по ревью и словам ментора Германа): шаг **(i)**
+  (разделение на репозитории) и шаг **(f)** (`pkg/foundation` → `internal/sys`) **отменены**:
+  сервисы остаются в одном репо как `cmd/<svc>`, `pkg/foundation` — общий код для всех
+  `cmd/*`. Добавлен шаг **(b2)**: `repository` перестаёт импортировать `usecase`.
+- Статус на 2026-10-20: все шаги, кроме отменённых (f) и (i), выполнены и закоммичены в
+  `refactor/go-standard-layout`. 2026-10-20 закрыты хвосты: обновление Go/`x/net`
+  (vuln-check), безопасные 401, Q16 (`sys/auth` без импорта `usecase`), перенос
+  `cmd/metrics/{collector,publisher}`, `go_package` в `generated/authpb`. Затем выполнен шаг (j):
+  переход на доменную раскладку `internal/<domain>/`. Открытым остаётся Q17 (вопрос ментору).
+
+---
+
+## Текущее состояние vs стандарт
+
+| Область | Сейчас (на диске) | Стандарт | Шаг |
+|---|---|---|---|
+| Сервисы в репо | `cmd/sales`, `cmd/auth`, `cmd/metrics` + CLI `cmd/admin`, `cmd/logfmt` | остаются в одном репо как `cmd/<svc>` (решение 2026-10-18) | (a); (i) отменён |
+| `main.go` | ✅ тонкие, вызывают `internal/app/<svc>.Run` | тонкий `main`, вызывает `internal/app` | (a) ✅ |
+| Wiring / DI | ✅ `internal/app/{sales,auth,metrics}` (+ `routes*.go` с тегами `crud`/`reporting`) | `internal/app/app.go`, руками | (a) ✅ |
+| Конфиг | ✅ `internal/config/{sales,auth,metrics}/config.go` | `internal/config/config.go` | (a) ✅ |
+| Транспорт | `internal/handler/http/<x>/`, `internal/handler/grpc/auth/`; серверы — `internal/server/{http,grpc}` | `internal/handler/{http,grpc}/`, `internal/server/{http,grpc}` | ✅ (b), (j) |
+| Бизнес-логика | `internal/<x>/usecase/` (`deps.go` + `<x>.go`) | `internal/<domain>/usecase/deps.go + <domain>.go` | ✅ (b), (j) |
+| БД-слой | `internal/<x>/repository/` | `internal/<domain>/repository/<domain>_repository.go` | ✅ (b), (j) |
+| Модели | `internal/<x>/models/{<x>.go,query.go}`, общие типы `internal/types/*` | `internal/<domain>/models/`, `internal/types/` | ✅ (j) |
+| Имена файлов | ✅ переименованы | `<x>.go`, `<x>_repository.go`, `<x>_handler.go`, `dto.go`, `server.go` | (b) ✅ |
+| Ошибки | ✅ `errs.Error.Cause` (лог) + безопасное `Message` (клиент); 403 на отказ политики, 401 без деталей токена/OPA/БД | внутренняя причина (лог) + внешнее сообщение (клиент) | (h) ✅ |
+| Инфраструктура | ✅ `internal/sys/*` (+ `sys/metrics/{collector,publisher}` сервиса metrics) + `pkg/foundation/*`; `sys/auth` зависит от локального `UserLookup`, не от `usecase` | `pkg/foundation` остаётся общим кодом для `cmd/*` | (f) отменён; Q16 ✅ |
+| Go / уязвимости | ✅ Go 1.27.2, `golang.org/x/net` v0.60.0, Dockerfile'ы и CI закреплены; `make vuln-check` — 0 уязвимостей в коде | — | ✅ 2026-10-20 |
+| Контракты | ✅ `api/protobuf/authapp.proto`, фронтенд в `frontend/admin`; `go_package` во встроенном дескрипторе `generated/authpb` указывает на новый путь | `api/` — только `.proto`/OpenAPI | (g) ✅ |
+| Деплой/инфра | ✅ `docker/`, `deploy/{k8s,helm,keys}`, `docs/prompts`, `docker-compose.yaml` + `.env.example` | `docker/`, `docker-compose.yaml` + `.env.example` в корне, `docs/`, `scripts/` | (c) ✅ |
+| Миграции БД | ✅ golang-migrate, `db/migrations` + `db/fixtures` | `db/migrations/NNNNNN_*.up/down.sql`, `db/fixtures/*.sql` | (d) ✅ |
+| Dev-тулзы | ✅ `tools/go.mod` (`tool`-директивы) → `make tools` → `bin/` | `tools/` (свой `go.mod`, `tools.go`) → `bin/` | (e) ✅ |
+| Фоновые процессы | нет `internal/workers` | `internal/workers/` при появлении | — |
+
+### ✅ gRPC-фиксы авторизации — перенесены 2026-10-18
+
+> Выполнено: перенесены в `internal/handler/grpc/auth/authapp.go` и
+> `internal/service/authclient/grpc/model.go`; проверено временным in-process тестом
+> (Token без/с неверными creds → Unauthenticated, верные → токен с ролью USER; Authenticate
+> отдаёт Claims; rule_any/user_only/admin_or_subject проходят, rule_admin_only → PermissionDenied),
+> на старом коде тест падает. Ниже — исходное описание.
+
+Фиксы сделаны **только** в worktree-ветке `claude/keen-proskuriakova-20f1cb` на старой
+раскладке (`app/domain/grpcauthapp/authapp.go`, `app/sdk/authclient/grpc/model.go`,
+не закоммичены). В `refactor/go-standard-layout` их нет (проверено 2026-10-18:
+нет `ndToInt64`, `int64ToND` не nil-safe). Перенести в новые пути **до шага (b)**,
+чтобы не переносить дважды:
+
+| Фикс | Куда |
+|---|---|
+| `Authenticate` заполняет `Claims` в ответе | `internal/handler/grpc/auth/authapp.go` |
+| nil-safe `ndToInt64` / `int64ToND` | `internal/service/authclient/grpc/model.go` |
+| interceptor: проверка по `Auth_Token_FullMethodName` только для `Token`; `Token` берёт claims из `mid.GetClaims` | `internal/handler/grpc/auth/authapp.go` |
+| отказ OPA → `codes.PermissionDenied` | `internal/handler/grpc/auth/authapp.go` |
+
+Проверка: `go vet ./...`, `make test-only`, ручной вызов gRPC `Authenticate`/`Token` через
+`make compose-build-up` с `SALES_AUTH_*` в режиме `grpc`.
+
+---
+
+## Шаги
+
+Порядок по умолчанию: **(0) ✅ → gRPC ✅ → (a) → (b) → (b2) → (h) → (e) → (c) → (d) → (g) → (j)**.
+(f) и (i) отменены 2026-10-18.
+(c), (d), (e), (g) мало связаны с Go-кодом и могут идти в другом порядке, но до (i).
+
+### (0) Зафиксировать текущую перестройку — ✅ выполнено (`17aa562b`, gRPC-фиксы — `464061d3`)
+
+- **Цель:** закоммитить уже сделанный перенос в `internal/*` как отдельный коммит, чтобы
+  дальше двигаться маленькими шагами.
+- **Что:** текущие незакоммиченные изменения ветки `refactor/go-standard-layout` +
+  перенос gRPC-фиксов (см. выше).
+- **Проверка:** `go vet ./...`, `make test-only`, `make compose-build-up`.
+- **Зависит от:** —.
+
+### (a) `internal/config` + `internal/app` для каждого сервиса, тонкий `cmd/*/main.go` — ✅ выполнено 2026-10-18
+
+> Решения: Q1 — `internal/app/<svc>` + `internal/config/<svc>`; Q2 — build-теги сохранены
+> (`internal/app/sales/routes_{all,crud,reporting}.go`); охват — sales, auth, metrics (CLI
+> `admin`/`logfmt` не трогали). `//go:embed static` остался в `cmd/sales` и передаётся в `Run`.
+> Остаток закрыт 2026-10-20: `cmd/metrics/{collector,publisher}` → `internal/sys/metrics/{collector,publisher}`,
+> в `cmd/metrics/` остался только тонкий `main.go`.
+
+- **Цель:** правило 1 стандарта — `main` только создаёт контекст и вызывает `app.Run(ctx)`.
+- **Что переносится:**
+  - структура `cfg` + `conf.Parse` из `cmd/<svc>/main.go` → `internal/config`;
+  - сборка зависимостей (DB, Redis, authclient, usecase'ы + extensions, mux/роуты,
+    gRPC-сервер, debug-сервер, graceful shutdown) → `internal/app`;
+  - `cmd/{sales,auth}/build/*` (выбор набора роутов по build-тегам) → `internal/app`.
+- **Пока сервисы в одном репо** — по пакету на сервис, например `internal/app/sales`,
+  `internal/app/auth`, `internal/app/metrics` и `internal/config/{sales,auth,metrics}`
+  (после шага (i) станет просто `internal/app` и `internal/config`). Точное именование —
+  открытый вопрос Q1.
+- **Затрагивает:** `cmd/sales/main.go`, `cmd/auth/main.go`, `cmd/metrics/main.go`,
+  `cmd/{sales,auth}/build/*`, новые `internal/app/*`, `internal/config/*`; скилл
+  `business-layer-extensions` (текст уже указывает на `internal/app` как цель).
+- **Риски:** build-теги `crud`/`reporting` в `cmd/sales/build` — их надо сохранить
+  (или заменить конфигом — Q2); порядок shutdown; `cmd/sales/tests/*` могут зависеть от
+  `build` — проверить импорты; `логирование `GOMAXPROCS` в `main`.
+- **Проверка:** `go vet ./...`, `make test-only`, `make compose-build-up`, запуск через
+  `go run` по AGENTS.md (*Local Development Workflow*).
+- **Зависит от:** (0).
+
+### (b) Переименование файлов под стандарт (без смены логики) — ✅ выполнено 2026-10-19
+
+> Q3: `<entity>_repository.go` и в `postgres/`, `sqlite/`, `cache/`. Q4 снят: пакеты уже
+> `package user`/`audit`/…; алиасы импорта `userbus`/`userdb`/`userapp` остались. `apitest/model.go`
+> не трогали (тестовый хелпер, не DTO). 42 `git mv`, код не менялся.
+
+- **Цель:** имена файлов из стандарта; чисто механический шаг.
+- **Что:**
+  - `internal/usecase/<x>/<x>bus.go` → `<x>.go`;
+  - `internal/repository/<x>/<x>db.go` → `<x>_repository.go` (`productpg.go`,
+    `productsqlite.go`, `usercache.go` — Q3), `model.go` → `dto.go`;
+  - `internal/handler/http/<x>/<x>app.go` → `<x>_handler.go`, `model.go` → `dto.go`;
+  - `internal/handler/http/server/mux.go` → `server.go`;
+  - `internal/handler/grpc/auth/authapp.go` → `auth_handler.go`, `start.go` → `server.go`;
+  - тесты рядом (`<x>bus_test.go` → `<x>_test.go` и т.д.).
+- **Затрагивает:** только имена файлов в `internal/{usecase,repository,handler}`; импорты
+  не меняются (пакеты те же).
+- **Риски:** минимальные; `git mv`, чтобы сохранить историю; не смешивать с правками кода.
+  Имена пакетов (`package userbus` и т.п.) — отдельный вопрос Q4.
+- **Проверка:** `go vet ./...`, `make test-only`.
+- **Зависит от:** (0); лучше после (a), чтобы не конфликтовать.
+
+### (b2) `repository` без импорта `usecase` — ✅ выполнено 2026-10-19
+
+> Решение: `Storer` (user/product/home) → `models.<Entity>Storer` (Go требует точный тип
+> возврата `NewWithTx`); `QueryFilter`/`OrderBy*` → `internal/models/<x>_query.go`; ошибки
+> `ErrNotFound`/`ErrUniqueEmail` → `internal/models/errors.go`. В usecase — алиасы, handler'ы и
+> тесты не менялись. `rg internal/usecase internal/repository` → пусто.
+
+- **Цель:** снизить связность (идея `deps.go`): `internal/repository/*` сейчас импортирует
+  `internal/usecase/*` ради `QueryFilter`, доменных ошибок (`ErrNotFound`, `ErrUniqueEmail`…)
+  и типа `Storer` в `NewWithTx`.
+- **Что:** `QueryFilter` и доменные ошибки → `internal/models` (или `internal/errors`);
+  `NewWithTx` репозитория возвращает свой конкретный тип, а приведение к интерфейсу —
+  в usecase; правило в AGENTS.md (*Architecture rules* п.3) меняется на «repository не
+  импортирует usecase».
+- **Проверка:** `go vet ./...`, `make test-only`, `rg 'internal/usecase' internal/repository` → пусто.
+- **Зависит от:** (b).
+
+### (c) `zarf/` → `docker/`, `docs/`, `scripts/`; compose и `.env.example` в корень — ✅ выполнено 2026-10-19
+
+> Q5: `deploy/k8s`, `deploy/helm`; Q6: `deploy/keys` (dev-ключ остаётся в git; дефолт
+> `AUTH_AUTH_KEYS_FOLDER`/admin = `deploy/keys/`). `zarf/docker/*` → `docker/`, compose →
+> `docker-compose.yaml` в корне (`-p compose` сохранён, имена контейнеров/volumes те же),
+> `pg_hba.conf` → `docker/`, данные Postgres перенесены в `docker/database-data` (gitignore +
+> .dockerignore — раньше `!zarf/compose/database-data` тащил БД в build context), `zarf/prompts` →
+> `docs/prompts`, Tilt собирает в `bin/`. `.env.example` (64 переменные) сгенерирован из `--help`.
+> `scripts/` не создан — отдельных shell-скриптов в makefile нет (`kind-with-registry.sh` остался в
+> `deploy/k8s/dev`).
+
+- **Цель:** корень репо как в стандарте.
+- **Что:**
+  - `zarf/docker/dockerfile.*` → `docker/`;
+  - `zarf/compose/docker_compose.yaml` → `docker-compose.yaml` (корень), `pg_hba.conf` →
+    `docker/`; **`zarf/compose/database-data/` — данные Postgres, не переносить в git**,
+    добавить в `.gitignore` / вынести в volume;
+  - создать `.env.example` со всеми `SALES_*`, `AUTH_*`, `METRICS_*` переменными;
+  - `docs/prompts/*` → `docs/` (AI-инструкции), `localrun.md` в `docs/`;
+  - `zarf/k8s`, `zarf/helm` → Q5, `zarf/keys` → Q6;
+  - shell-скрипты из `makefile` → `scripts/`.
+- **Затрагивает:** `makefile` (≈33 упоминания `zarf`), `zarf/k8s/dev/Tiltfile`,
+  Dockerfile'ы (`COPY`-пути), helm-чарты, AGENTS.md (*Local Development Workflow*
+  упоминает `docker_compose.yaml`), `README.md`.
+- **Риски:** сломанные пути в `makefile`/Tilt/Helm; ключи `zarf/keys/*.pem`
+  монтируются в контейнеры; `database-data` случайно попадёт в git.
+- **Проверка:** `make compose-build-up`, k8s/Tilt-таргеты `makefile`, `go vet ./...`.
+- **Зависит от:** — (лучше после (a)).
+
+### (d) Миграции: darwin single-file → `db/migrations` up/down + `db/fixtures` — ✅ выполнено 2026-10-19
+
+> Q7: golang-migrate v4.20.1. `db/migrations/000001…000005_*.up/down.sql` (DDL без изменений,
+> down-миграции написаны впервые), `db/fixtures/seed_test_data.sql`, embed через пакет `db`
+> (`db/db.go`, т.к. `//go:embed` не видит файлы выше пакета). `internal/sys/db/migrate` —
+> golang-migrate (драйвер `postgres` + `WithConnection` на отдельном соединении, пул приложения
+> не закрывается) с авто-baseline: если есть `darwin_migrations`, а версии golang-migrate нет —
+> `Force(N)` по max darwin-версии (1.05 → 5). CLI `bin/migrate` (tools, тег `postgres`), таргеты
+> `migrate-create`/`migrate-up`/`migrate-down`. darwin удалён из go.mod. Проверено: up→down→up на
+> чистой БД, baseline на имитации darwin-БД, `make test-only`, compose на реальной dev-БД.
+
+- **Цель:** раздел про `db/` стандарта.
+- **Что:** разрезать `internal/sys/db/migrate/sql/migrate.sql` (darwin, версии внутри
+  одного файла) на `db/migrations/000001_<name>.up.sql` / `.down.sql`; `seed.sql` →
+  `db/fixtures/seed_test_data.sql` с `INSERT … ON CONFLICT DO NOTHING`.
+- **Инструмент:** предложение — `golang-migrate` (CLI через `tools/` + библиотека с
+  `embed`/`iofs` для `cmd/admin migrate` и `dbtest`). Выбор — Q7.
+- **Затрагивает:** `internal/sys/db/migrate`, `internal/sys/dbtest` (поднимает схему в
+  тестах), `cmd/admin/commands/{migrate,seed}.go`, `makefile`, k8s init-контейнеры,
+  `go.mod` (удалить `github.com/ardanlabs/darwin/v3`).
+- **Риски:** **существующие БД** знают версии darwin (своя служебная таблица) — нужен
+  baseline (`migrate force N`) либо пересоздание dev-БД; down-миграции пишутся впервые;
+  `dbtest` должен работать с новым механизмом.
+- **Проверка:** чистая БД: up → down → up; `make test-only`; `make compose-build-up`.
+- **Зависит от:** (c) (папка `db/` в корне), (e) (CLI `migrate` в `bin/`).
+
+### (e) `tools/` + `bin/` — ✅ выполнено 2026-10-19
+
+> Q8: staticcheck. `tools/go.mod` с `tool`-директивами (staticcheck, govulncheck, goimports,
+> protoc-gen-go, protoc-gen-go-grpc, expvarmon, hey), `tools/tools.go` — документация;
+> `make tools` → `bin/` (в `.gitignore`), `make tools-upgrade`. Таргеты `fmt`/`lint`/`vuln-check`/
+> метрики/нагрузка/`authapp-proto-gen` зовут `$(BIN)/<tool>`; `lint`/`vuln-check` исключают
+> `node_modules` (`make lint` теперь зелёный). `migrate` добавится в (d).
+> **Найдено:** `make vuln-check` падал и до шага — 12 уязвимостей stdlib Go 1.27.0 и
+> `golang.org/x/net`. **Исправлено 2026-10-20:** `go 1.27.2` в `go.mod`/`tools/go.mod`, `x/net` v0.60.0,
+> `golang:1.27.2` в Dockerfile'ах, Go 1.27.2 в CircleCI. Остался только GO-2026-5932
+> (`x/crypto/openpgp` заброшен, фикса нет) — код его не вызывает.
+
+- **Цель:** правило 3 стандарта — тулзы зафиксированы версиями.
+- **Что:** `tools/go.mod`, `tools/tools.go` (blank-imports или `tool`-директивы Go 1.24+)
+  для staticcheck/golangci-lint (Q8), govulncheck, goimports/gofumpt, protoc-gen-go,
+  protoc-gen-go-grpc, migrate, expvarmon, hey; таргет `make tools` собирает в `bin/`;
+  таргеты `makefile` вызывают `./bin/<tool>`; `bin/` в `.gitignore`.
+- **Затрагивает:** `makefile` (секция `go install …@latest`, `lint`, `vuln-check`,
+  proto-генерация), CI (если есть), `.gitignore`.
+- **Риски:** Windows (`.exe` в `bin/`); расхождение версий с текущими глобальными.
+- **Проверка:** `make tools && make lint && make vuln-check`, `make test`.
+- **Зависит от:** —.
+
+### (f) `pkg/foundation/*` → `internal/sys/*` — ❌ отменено 2026-10-18
+
+> Решение пользователя: `pkg/foundation` не привязан к бизнес-логике и переиспользуется всеми
+> `cmd/*`, поэтому остаётся в `pkg/`. Описание ниже сохранено для истории.
+
+- **Цель:** правило 2 стандарта — в `pkg/` только публичное.
+- **Что:** `logger`, `web`, `otel`, `keystore`, `worker`, `docker` → `internal/sys/<name>`;
+  обновить ≈70 Go-файлов с импортом `pkg/foundation/...`; удалить `pkg/foundation`.
+  В `pkg/` оставить только то, что реально понадобится другим сервисам после (i)
+  (кандидаты: публичный клиент auth, будущие общие события) — решается в (i).
+- **Затрагивает:** все слои (импорты), скилл `layered-architecture-types` (упоминания
+  `pkg/foundation` → `internal/sys`), AGENTS.md (ссылка на `pkg/foundation/web/web.go`
+  в *Local Development Workflow*).
+- **Риски:** коллизии имён в `internal/sys`; `pkg/foundation/docker` — тестовый хелпер,
+  возможно место в `internal/sys/dbtest`.
+- **Проверка:** `go vet ./...`, `make test-only`, `rg "pkg/foundation"` → пусто.
+- **Зависит от:** (0). Должен быть **до** (i).
+
+### (g) `api/frontends/admin` вон из `api/` — ✅ выполнено 2026-10-19
+
+> Q9: `frontend/admin` в этом репо. Перенесено целиком (вместе с локальными `node_modules`/`dist`,
+> которые не в git); `ADMIN_FRONTEND_PREFIX`, `.gitignore` (`frontend/admin/.env`), `.dockerignore`
+> (`frontend/` вне build context), скилл review-pr обновлены. `api/` = только `protobuf/`.
+
+- **Цель:** `api/` — только контракты.
+- **Варианты (Q9 — решение за пользователем):** отдельный репозиторий (логично, если
+  делаем (i)) или `frontend/admin` в корне этого репо.
+- **Затрагивает:** `api/frontends/admin`, `makefile`/Dockerfile/compose, если фронт
+  собирается или раздаётся оттуда; CORS (`http://localhost:3001`) не меняется.
+- **Риски:** `dist/` и `node_modules` в git; пути в CI.
+- **Проверка:** фронт собирается и логинится на `http://localhost:3001` (httpOnly cookie).
+- **Зависит от:** —.
+
+### (h) `internal/errors`: внутренняя причина + внешнее сообщение — ✅ выполнено 2026-10-19
+
+> Сделано: `errs.Error.Cause` (`json:"-"`) + `Unwrap()`; `errs.Wrap(code, cause, safeMessage)`;
+> `mid.Errors` логирует `cause`, а для `Internal`/`Unknown`/`DataLoss`/`Unavailable`/`InternalOnlyLog`
+> отдаёт клиенту только `http.StatusText` (раньше уходили `usr[%+v]` с хэшем пароля и тексты БД).
+> Отказ OPA: auth → 403 `permission_denied` «you are not authorized for that action» (claims/rule
+> только в логе); HTTP- и gRPC-authclient нормализуют отказ в `errs.PermissionDenied`, `mid.Authorize`
+> отдаёт 403. Безопасные тексты в `mid/authorize.go` (querybyid) и `mid/authen.go` (parsing subject).
+> 10 тест-кейсов sales: 401 → 403. gRPC-хендлер уже отдавал `status.Error` с безопасными текстами.
+> **Остаток закрыт 2026-10-20:** 401 больше не содержат внутренний текст — `mid/authen.go` отдаёт
+> `invalid or missing token` (Bearer/authclient) и `invalid credentials` (Basic), детали парсинга
+> токена, OPA и БД остаются в `Cause` (лог). Ожидания в 21 тест-кейсе sales обновлены.
+
+- **Цель:** правило 4 стандарта.
+- **Что:** тип ошибки хранит `cause error` (для логов, `errors.Unwrap`) и безопасное
+  `message` для клиента; `mid/errors.go` логирует причину и отдаёт только сообщение;
+  gRPC-хендлер мапит в `status.Error(code, message)`; аудит мест, где в ответ уходит
+  `err.Error()` из БД/инфраструктуры.
+- **Найдено при (a):** `mid.Authorize` отдаёт любой отказ авторизации как 401 `unauthenticated` и
+  кладёт в ответ внутренний текст (`claims[[USER]] rule[rule_admin_only]`); должно быть 403 с
+  безопасным сообщением (касается и HTTP-, и gRPC-режима authclient).
+- **Затрагивает:** `internal/errors/{errs.go,codes.go}`, `internal/handler/http/mid/errors.go`,
+  все `internal/handler/http/*`, `internal/handler/grpc/auth`, тесты `cmd/sales/tests/*`.
+- **Риски:** **меняется контракт ответов** — фронтенд и тесты, сравнивающие текст ошибки;
+  `FieldErrors` остаются детальными (это безопасные ошибки валидации).
+- **Проверка:** `make test-only` (с обновлёнными ожиданиями), ручная проверка 4xx/5xx.
+- **Зависит от:** (b).
+
+### (i) Разделение на отдельные репозитории: sales, auth, metrics — ❌ отменено 2026-10-18
+
+> Решение пользователя (по словам ментора Германа): 2–3 тесно связанных сервиса живут в
+> одном репо как `cmd/<svc>`. Вопросы Q10–Q15 сняты. Описание ниже сохранено для истории.
+
+Последний и самый большой шаг. Каждый репозиторий — полный стандарт: `cmd/app/main.go`,
+`internal/app`, `internal/config`, свои `db/`, `docker/`, `tools/`, `makefile`,
+`docker-compose.yaml`.
+
+- **Что куда (предложение, требует решений):**
+
+  | Что | Репозиторий |
+  |---|---|
+  | sales API (`internal/handler/http/{user,product,home,vproduct,audit,tran,raw,check}`, usecase'ы, repository, models, миграции) | `sales` |
+  | auth (`internal/handler/http/auth`, `oauth`, `internal/handler/grpc/auth`, `internal/sys/auth` + rego) | `auth` |
+  | metrics sidecar (`cmd/metrics/*`) | `metrics` |
+  | `cmd/admin` (migrate, seed, gentoken, useradd) | Q10 |
+  | `cmd/logfmt` | Q11 |
+  | `api/protobuf/authapp.proto` | владелец — `auth`; доставка в `sales` — Q12 |
+  | `internal/generated/authpb` | генерируется у потребителя из `.proto` или публикуется (см. варианты) |
+  | `internal/service/authclient` | `sales` (потребитель) — или публичный клиент `auth/pkg/authclient` |
+
+- **Общая БД:** сейчас auth работает с таблицей `users` через `internal/usecase/user`.
+  Q13: auth владеет пользователями (своя БД + API для sales) или общая БД временно
+  остаётся. Это главный архитектурный риск шага.
+- **Варианты шаринга кода:**
+  1. **Публичный shared-модуль** (`pkg/logger`, `pkg/web`, `pkg/otel`, `pkg/authpb`… в
+     отдельном репо/модуле, версии через git-теги): один источник правды; минусы —
+     релизный цикл, breaking changes бьют по всем, риск превратить его в `utils`.
+  2. **Копирование** `internal/sys/*` в каждый сервис: полная независимость, проще для
+     обучения; минусы — дрейф, дублирование фиксов.
+  3. **Гибрид** (на обсуждение): инфраструктуру (`internal/sys/*`) копировать, а
+     **контракт** (`authapp.proto` + сгенерированный Go-клиент) публиковать из `auth`
+     (`auth/pkg/...` или отдельный модуль контрактов) — по стандарту `pkg/` как раз для
+     этого.
+- **Затрагивает:** всё; `go.mod` (`module github.com/ardanlabs/service` → новые module
+  path, Q14), k8s/helm, compose (сеть между сервисами), `makefile`, CI.
+- **Риски:** общая БД/схема; тесты `cmd/sales/tests/*` поднимают auth в процессе
+  (`internal/handler/http/apitest`) — после разделения нужен мок или контейнер; история
+  git (Q15).
+- **Проверка:** в каждом репо `go vet ./...`, `make test-only`; e2e — compose с тремя
+  образами: логин через auth (HTTP и gRPC), CRUD в sales, метрики в metrics.
+- **Зависит от:** (a), (b), (c), (d), (e), (f), (h); (g) желательно.
+
+---
+
+### (j) Доменная раскладка `internal/<domain>/` (как в `typespace`) — ✅ выполнено 2026-10-20
+
+> Решение пользователя 2026-10-20 (по образцу проекта ментора Германа `typespace`), план —
+> [`DOMAIN_LAYOUT_PLAN.md`](../DOMAIN_LAYOUT_PLAN.md). Стандарт переключён с Метода 1 на
+> Метод 2. Коммиты: `f7374179` (типы + модели), `519e9dd9` (usecase/repository + серверы),
+> затем коммит с документацией.
+
+- **Что:**
+  - `internal/models/types/*` → `internal/types/*`;
+  - `internal/models/<x>.go` (+ `<x>_query.go`, части `storer.go`/`errors.go`) →
+    `internal/<x>/models/{<x>.go,query.go}`; префиксы домена у типов убраны
+    (`UserStorer` → `usermodels.Storer`, `UserQueryFilter` → `QueryFilter`,
+    `ErrUserNotFound` → `ErrNotFound`, `VProduct` → `vproductmodels.Product`), тексты ошибок
+    не менялись;
+  - `internal/usecase/<x>` → `internal/<x>/usecase`, `internal/repository/<x>` →
+    `internal/<x>/repository`; имена пакетов = имена папок (`usecase`, `repository`,
+    `models`), алиасы импорта `<x>bus`, `<x>db`, `<x>models` сохраняют старые идентификаторы;
+  - `internal/handler/http/server` → `internal/server/http`; запуск/остановка gRPC-сервера
+    вынесены из `internal/handler/grpc/auth` в `internal/server/grpc` (`Start`/`Shutdown`),
+    `grpcauthapp.NewApp` экспортирован;
+  - документация (`AGENTS.md`, `golang_project_structure.md`, скиллы `.agents/skills/*`).
+- **Проверка:** `go vet ./...`, `make test-only`, `make compose-build-up`; живые запросы
+  через HTTP- и gRPC-клиента auth.
+
+---
+
+## Открытые вопросы (пользователю / ментору Герману)
+
+1. **Q1.** Пока сервисы в одном репо: `internal/app/<svc>` + `internal/config/<svc>` — ок,
+   или сначала разделить репо, а потом делать (a)?
+2. **Q2.** Build-теги `crud`/`reporting` в `cmd/sales/build` — сохраняем (в `internal/app`),
+   заменяем конфигом или удаляем?
+3. **Q3.** Имена файлов при нескольких реализациях репозитория (`postgres/`, `sqlite/`,
+   `cache/`): `product_repository.go` в каждой папке или `postgres.go`/`sqlite.go`?
+4. **Q4.** ✅ После шага (j) пакеты называются `package usecase`/`repository`/`models`; алиасы импорта `userbus`/`userdb`/`userapp` и
+   имена `ExtBusiness`/`NewBusiness` **оставлены** (решение 2026-10-20 — не плодить шум в диффе).
+5. **Q5.** Куда `zarf/k8s` и `zarf/helm` — стандарт не описывает (`deploy/`?).
+6. **Q6.** `zarf/keys/*.pem` (dev-ключи JWT) — где хранить и коммитить ли вообще?
+7. **Q7.** Инструмент миграций: `golang-migrate` (предложение), `goose` или darwin с
+   разбивкой файлов? Как делаем baseline для существующих dev-БД?
+8. **Q8.** Линтер: оставляем `staticcheck` или переходим на `golangci-lint` (упомянут в
+   стандарте)?
+9. **Q9.** `api/frontends/admin` — отдельный репозиторий или `frontend/` в этом репо?
+10. **Q10.** `cmd/admin` — куда после разделения (в `sales`, в `auth`, отдельный CLI)?
+11. **Q11.** `cmd/logfmt` — оставить, вынести или удалить?
+12. **Q12.** Как `sales` получает `authapp.proto`: submodule, buf, копия, публичный Go-модуль?
+13. **Q13.** Пользователи и БД: auth владеет `users` отдельно или общая БД пока остаётся?
+14. **Q14.** Новые module path — уходим от `github.com/ardanlabs/service`?
+15. **Q15.** Разделение репо с историей (`git filter-repo`) или чистый старт?
+16. **Q16.** ✅ Решено 2026-10-20: `internal/sys/auth` остаётся в `sys`, но зависит от локального
+    интерфейса `auth.UserLookup` (`QueryByID`) вместо `userbus.ExtBusiness` и больше не импортирует
+    `internal/user/usecase`. `internal/sys/dbtest` остаётся на месте — это тестовый харнесс, ему
+    нормально собирать все слои.
+17. **Q17.** Метод 2 (доменная раскладка, шаг (j)) + декораторы `ExtBusiness` + строгие типы — ментор подтверждает, что
+    это не противоречит стандарту (AGENTS.md трактует именно так)?

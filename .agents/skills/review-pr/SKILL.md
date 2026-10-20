@@ -52,23 +52,31 @@ Go is the primary codebase, not the only one.
 
 | Area            | Where                                                      | Lens focus for this language                                                                                                                |
 |-----------------|------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
-| Go services     | `app/**`, `business/**`, `foundation/**`, `api/**` (`.go`) | Full Go review; the layered type rules and Go skills apply here.                                                                            |
-| Admin frontend  | `api/frontends/admin/src` (`.vue`, `.js`, `.scss`)         | Vue SFC structure, component `props`/`emits` contracts, reactivity, async/`fetch` error handling, accessibility, leaked watchers/listeners. |
-| Auth policies   | `app/sdk/auth/rego` (`.rego`)                              | OPA/Rego rules: default-deny posture, `input` shape assumptions, unintended allows.                                                         |
-| gRPC contracts  | `app/domain/grpcauthapp` (`.proto`)                        | Field-number stability, backward/forward compatibility, breaking changes.                                                                   |
-| Database        | `business/sdk/migrate/sql` (`.sql`)                        | Migration reversibility/idempotency, indexing, locking, destructive changes, seed correctness.                                              |
-| Deploy / config | `zarf/**` (`.yaml`, `.tpl`), `*.conf`                      | Helm/k8s manifests: resource limits, secrets handling, probes, value templating.                                                            |
+| Go services     | `cmd/**`, `internal/**`, `pkg/foundation/**` (`.go`)       | Full Go review; the layered type rules and Go skills apply here.                                                                            |
+| Admin frontend  | `frontend/admin/src` (`.vue`, `.js`, `.scss`)              | Vue SFC structure, component `props`/`emits` contracts, reactivity, async/`fetch` error handling, accessibility, leaked watchers/listeners. |
+| Auth policies   | `internal/sys/auth/rego` (`.rego`)                         | OPA/Rego rules: default-deny posture, `input` shape assumptions, unintended allows.                                                         |
+| gRPC contracts  | `api/protobuf` (`.proto`)                                  | Field-number stability, backward/forward compatibility, breaking changes.                                                                   |
+| Database        | `db/migrations`, `db/fixtures` (`.sql`)                    | Migration reversibility/idempotency, indexing, locking, destructive changes, seed correctness.                                              |
+| Deploy / config | `docker/**`, `deploy/**`, `docker-compose.yaml`, `*.conf` | Helm/k8s manifests: resource limits, secrets handling, probes, value templating.                                                            |
 | Scripts         | `*.sh`                                                     | Shell safety: `set -euo pipefail`, quoting, exit-code handling.                                                                             |
 
 ## Repo-local authority
 
 All lenses treat **AGENTS.md** (and any nested AGENTS.md) as authoritative.
 
+**`golang_project_structure.md`** (repo root) is the authoritative **structure standard**
+(folders, layers, file names — Method 2, domain layout `internal/<domain>/{models,usecase,repository}`). AGENTS.md section *Project Structure &
+Architecture Standard* says how it combines with the skills below. Any diff that adds,
+moves, or renames files/packages, or touches `cmd/*/main.go`, `internal/app`,
+`internal/config`, `pkg/`, `api/`, or a `deps.go`, gets the **structure-standard check**
+in Boundary Keeper. Legacy layout already on disk (see AGENTS.md *Current state vs the
+standard*) is not a finding by itself — spreading it in new code is.
+
 Apply these repo skills **only to `.go` files**, where relevant:
 
 - `use-modern-go` — Go implementation style.
-- `layered-architecture-types` — App ↔ Business ↔ Storage: primitives at the
-  edges, strong types in Business, named converters only.
+- `layered-architecture-types` — Handler ↔ Usecase ↔ Repository: primitives at the
+  edges, strong types in Usecase/Models, named converters only.
 - `business-layer-extensions` — the `ExtBusiness` / `Extension` decorator seam.
 - `branching-logic-flow` — defaulting and shallow control flow.
 
@@ -84,7 +92,7 @@ language.
    - `git diff`
    - For a branch/PR: `git diff --name-only <base>...HEAD`, or `gh pr diff`.
 3. Build a short change inventory: which languages/areas changed (see *Languages
-   in this repo*); production vs test files; App/Business/Storage files; comments
+   in this repo*); production vs test files; Handler/Usecase/Repository files; comments
    or doc strings; error/failure handling; new or modified types, interfaces,
    converters, component contracts, proto messages, or SQL schema; PR title if a
    PR is in scope.
@@ -101,7 +109,9 @@ Route by what changed unless the caller asks for "full", "all", or "PR-ready".
   behavior: Error Tripwire.
 - **Any contract or shape changed** — Go structs/interfaces/constructors/
   converters/Business strong types/DB rows/stores, Vue `props`/`emits`, proto
-  messages, or SQL schema: Boundary Keeper.
+  messages, or SQL schema — or any file/package added, moved, or renamed, or a
+  change to `cmd/*/main.go`, `internal/app`, `internal/config`, `pkg/`, `api/`,
+  `deps.go`: Boundary Keeper.
 - **Comments, doc strings (Go doc, JSDoc), examples, README snippets, or
   TODO/FIXME changed:** Doc Drift Check.
 - **Polish pass:** Straight-Line Pass — run in a second wave after G4/G3 findings are
@@ -173,7 +183,7 @@ Overall Gate: G[0-4] — <Clear/Polish/Tighten/Repair/Stop>
 
 ## Suggested verification
 - Go: `make test-only`, or `go test ./path/...` for a single package.
-- Frontend: the project's JS test/lint/build scripts in `api/frontends/admin`.
+- Frontend: the project's JS test/lint/build scripts in `frontend/admin`.
 - SQL/Rego/proto: the relevant migration, policy, or codegen check for that area.
 - Re-run affected lenses after fixes.
 ```

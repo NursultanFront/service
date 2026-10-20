@@ -1,0 +1,125 @@
+package product_test
+
+import (
+	"net/http"
+
+	errs "github.com/ardanlabs/service/internal/errors"
+	"github.com/ardanlabs/service/internal/handler/http/apitest"
+	productapp "github.com/ardanlabs/service/internal/handler/http/product"
+	"github.com/google/go-cmp/cmp"
+)
+
+func create200(sd apitest.SeedData) []apitest.Table {
+	table := []apitest.Table{
+		{
+			Name:       "basic",
+			URL:        "/v1/products",
+			Token:      sd.Users[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusOK,
+			Input: &productapp.NewProduct{
+				Name:     "Guitar",
+				Cost:     10.34,
+				Quantity: 10,
+			},
+			GotResp: &productapp.Product{},
+			ExpResp: &productapp.Product{
+				Name:     "Guitar",
+				UserID:   sd.Users[0].ID.String(),
+				Cost:     10.34,
+				Quantity: 10,
+			},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, exists := got.(*productapp.Product)
+				if !exists {
+					return "error occurred"
+				}
+
+				expResp := exp.(*productapp.Product)
+
+				expResp.ID = gotResp.ID
+				expResp.DateCreated = gotResp.DateCreated
+				expResp.DateUpdated = gotResp.DateUpdated
+
+				return cmp.Diff(gotResp, expResp)
+			},
+		},
+	}
+
+	return table
+}
+
+func create400(sd apitest.SeedData) []apitest.Table {
+	table := []apitest.Table{
+		{
+			Name:       "missing-input",
+			URL:        "/v1/products",
+			Token:      sd.Users[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusBadRequest,
+			Input:      &productapp.NewProduct{},
+			GotResp:    &errs.Error{},
+			ExpResp:    errs.Errorf(errs.InvalidArgument, "validate: [{\"field\":\"name\",\"error\":\"invalid name \\\"\\\"\"},{\"field\":\"cost\",\"error\":\"invalid money 0.00\"},{\"field\":\"quantity\",\"error\":\"invalid quantity 0\"}]"),
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+	}
+
+	return table
+}
+
+func create401(sd apitest.SeedData) []apitest.Table {
+	table := []apitest.Table{
+		{
+			Name:       "emptytoken",
+			URL:        "/v1/products",
+			Token:      "&nbsp;",
+			Method:     http.MethodPost,
+			StatusCode: http.StatusUnauthorized,
+			GotResp:    &errs.Error{},
+			ExpResp:    errs.Errorf(errs.Unauthenticated, "invalid or missing token"),
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:       "badtoken",
+			URL:        "/v1/products",
+			Token:      sd.Admins[0].Token[:10],
+			Method:     http.MethodPost,
+			StatusCode: http.StatusUnauthorized,
+			GotResp:    &errs.Error{},
+			ExpResp:    errs.Errorf(errs.Unauthenticated, "invalid or missing token"),
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:       "badsig",
+			URL:        "/v1/products",
+			Token:      sd.Admins[0].Token + "A",
+			Method:     http.MethodPost,
+			StatusCode: http.StatusUnauthorized,
+			GotResp:    &errs.Error{},
+			ExpResp:    errs.Errorf(errs.Unauthenticated, "invalid or missing token"),
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+		{
+			Name:       "wronguser",
+			URL:        "/v1/products",
+			Token:      sd.Admins[0].Token,
+			Method:     http.MethodPost,
+			StatusCode: http.StatusForbidden,
+			GotResp:    &errs.Error{},
+			ExpResp:    errs.Errorf(errs.PermissionDenied, "you are not authorized for that action"),
+			CmpFunc: func(got any, exp any) string {
+				return cmp.Diff(got, exp)
+			},
+		},
+	}
+
+	return table
+}

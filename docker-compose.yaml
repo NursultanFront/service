@@ -1,0 +1,191 @@
+services:
+  database:
+    image: postgres:18.6-alpine3.24
+    container_name: database
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - ./docker/database-data:/var/lib/postgresql/18/docker
+      - ./docker/pg_hba.conf:/etc/pg_hba.conf
+    command: ["-c", "hba_file=/etc/pg_hba.conf"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    cpu_count: 2
+    networks:
+      sales-system-network:
+        ipv4_address: 10.5.0.2
+
+  redis:
+    image: redis:8.2-alpine
+    container_name: redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      sales-system-network:
+        ipv4_address: 10.5.0.3
+
+  kafka:
+    image: apache/kafka:3.9.0
+    container_name: kafka
+    restart: unless-stopped
+    ports:
+      - "9092:9092"
+    environment:
+      - KAFKA_NODE_ID=1
+      - KAFKA_PROCESS_ROLES=broker,controller
+      - KAFKA_LISTENERS=PLAINTEXT://kafka:19092,CONTROLLER://kafka:9093,PLAINTEXT_HOST://0.0.0.0:9092
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:19092,PLAINTEXT_HOST://localhost:9092
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+      - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - CLUSTER_ID=MkU3OEVBNTcwNTJENDM2Qk
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 || exit 1",
+        ]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    networks:
+      sales-system-network:
+        ipv4_address: 10.5.0.4
+
+  init-migrate-seed:
+    image: localhost/ardanlabs/sales:0.0.1
+    pull_policy: never
+    container_name: init-migrate-seed
+    restart: unless-stopped
+    entrypoint: ["./admin", "migrate-seed"]
+    environment:
+      - SALES_DB_USER=postgres
+      - SALES_DB_PASSWORD=postgres
+      - SALES_DB_HOST=database
+      - SALES_DB_DISABLE_TLS=true
+    networks:
+      sales-system-network:
+        ipv4_address: 10.5.0.10
+    deploy:
+      restart_policy:
+        condition: none
+    depends_on:
+      - database
+
+  auth:
+    image: localhost/ardanlabs/auth:0.0.1
+    pull_policy: never
+    container_name: auth
+    restart: unless-stopped
+    ports:
+      - "6060:6000"
+      - "6001:6001"
+      - "6010:6010"
+    healthcheck:
+      test:
+        ["CMD-SHELL", "wget -qO- http://localhost:6000/v1/liveness || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 2
+      start_period: 2s
+    cpu_count: 2
+    environment:
+      - GOMAXPROCS=2
+      - AUTH_DB_USER=postgres
+      - AUTH_DB_PASSWORD=postgres
+      - AUTH_DB_HOST=database
+      - AUTH_DB_DISABLE_TLS=true
+      - AUTH_WEB_CORS_ALLOWED_ORIGINS=http://localhost:3001
+      - KUBERNETES_NAMESPACE=compose
+      - KUBERNETES_NAME=sales-system
+      - KUBERNETES_POD_IP=10.5.0.5
+      - KUBERNETES_NODE_NAME=auth
+    networks:
+      sales-system-network:
+        ipv4_address: 10.5.0.5
+    depends_on:
+      - database
+      - redis
+
+  sales:
+    image: localhost/ardanlabs/sales:0.0.1
+    pull_policy: never
+    container_name: sales
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+      - "3010:3010"
+    environment:
+      - GOMAXPROCS
+      - GOGC=off
+      - GOMEMLIMIT
+      - SALES_DB_USER=postgres
+      - SALES_DB_PASSWORD=postgres
+      - SALES_DB_HOST=database
+      - SALES_DB_DISABLE_TLS=true
+      - SALES_AUTH_HOST=http://auth:6000
+      - SALES_WEB_CORS_ALLOWED_ORIGINS=http://localhost:3001
+      - KUBERNETES_NAMESPACE
+      - KUBERNETES_NAME
+      - KUBERNETES_POD_IP
+      - KUBERNETES_NODE_NAME
+    healthcheck:
+      test:
+        ["CMD-SHELL", "wget -qO- http://localhost:3000/v1/liveness || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 2
+      start_period: 2s
+    networks:
+      sales-system-network:
+        ipv4_address: 10.5.0.15
+    depends_on:
+      - init-migrate-seed
+      - redis
+
+  metrics:
+    image: localhost/ardanlabs/metrics:0.0.1
+    pull_policy: never
+    container_name: metrics
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+      - "4010:4010"
+      - "4020:4020"
+    cpus: 1
+    environment:
+      - GOMAXPROCS=1
+      - METRICS_COLLECT_FROM=http://sales:3010/debug/vars
+    networks:
+      sales-system-network:
+        ipv4_address: 10.5.0.20
+    depends_on:
+      - sales
+
+volumes:
+  database: {}
+
+networks:
+  sales-system-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.5.0.0/24

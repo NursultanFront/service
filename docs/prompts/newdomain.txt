@@ -1,0 +1,25 @@
+- Create a new usecase package internal/usecase/sale (layout per golang_project_structure.md).
+- Use internal/usecase/product, internal/repository/product and internal/handler/http/product as your template.
+- Use the DATA MODELS below for internal/models/sale.go instead of the data models found in internal/models/product.go.
+- Make sure all the new code uses the DATA MODELS provided below.
+
+## DATA MODELS
+
+type Sale struct {
+    ID uuid.UUID
+    ProductID uuid.UUID
+    Amount int
+    Taxes int
+    DateCreated time.Time
+}
+
+type NewSale struct {
+    ProductID uuid.UUID
+    Amount int
+    Taxes int
+}
+
+type UpdateSale struct {
+    Amount *int
+    Taxes *int
+}

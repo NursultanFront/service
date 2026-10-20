@@ -1,0 +1,61 @@
+package mid
+
+import (
+	"context"
+	"errors"
+	"net/http"
+	"path"
+
+	errs "github.com/ardanlabs/service/internal/errors"
+	"github.com/ardanlabs/service/pkg/foundation/logger"
+	"github.com/ardanlabs/service/pkg/foundation/otel"
+	"github.com/ardanlabs/service/pkg/foundation/web"
+)
+
+// Errors handles errors coming out of the call chain.
+func Errors(log *logger.Logger) web.MidFunc {
+	m := func(next web.HandlerFunc) web.HandlerFunc {
+		h := func(ctx context.Context, r *http.Request) web.Encoder {
+			resp := next(ctx, r)
+
+			err := checkIsError(resp)
+			if err == nil {
+				return resp
+			}
+
+			_, span := otel.AddSpan(ctx, "app.sdk.mid.error")
+			span.RecordError(err)
+			defer span.End()
+
+			var appErr *errs.Error
+			if !errors.As(err, &appErr) {
+				appErr = errs.Errorf(errs.Internal, "Internal Server Error")
+			}
+
+			log.Error(ctx, "handled error during request",
+				"err", err,
+				"cause", appErr.Cause,
+				"source_err_file", path.Base(appErr.FileName),
+				"source_err_func", path.Base(appErr.FuncName))
+
+			// NOTE(AI): server-side failures never expose internal details to the
+			// client (migration step (h)); the full error is in the log above.
+			switch appErr.Code {
+			case errs.InternalOnlyLog:
+				appErr = errs.Errorf(errs.Internal, "Internal Server Error")
+
+			case errs.Internal, errs.Unknown, errs.DataLoss, errs.Unavailable:
+				appErr = errs.Errorf(appErr.Code, "%s", http.StatusText(appErr.HTTPStatus()))
+			}
+
+			// Send the error to the web package so the error can be
+			// used as the response.
+
+			return appErr
+		}
+
+		return h
+	}
+
+	return m
+}

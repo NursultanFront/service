@@ -144,14 +144,19 @@ endif
 # ==============================================================================
 # Install dependencies
 
-dev-gotooling:
-	go install github.com/divan/expvarmon@latest
-	go install github.com/rakyll/hey@latest
-	go install honnef.co/go/tools/cmd/staticcheck@latest
-	go install golang.org/x/vuln/cmd/govulncheck@latest
-	go install golang.org/x/tools/cmd/goimports@latest
-	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+# NOTE(AI): dev tools are pinned in tools/go.mod (tool directives) and built
+# into bin/ (migration step (e)); targets below call $(BIN)/<tool>.
+BIN := $(CURDIR)/bin
+
+.PHONY: tools tools-upgrade
+tools:
+	go -C tools build -tags postgres -o ../bin/ tool
+
+tools-upgrade:
+	go -C tools get -u tool
+	go -C tools mod tidy
+
+dev-gotooling: tools
 
 dev-brew:
 	brew update
@@ -182,7 +187,7 @@ build: sales metrics auth
 
 sales:
 	docker build \
-		-f zarf/docker/dockerfile.sales \
+		-f docker/dockerfile.sales \
 		-t $(SALES_IMAGE) \
 		--build-arg BUILD_TAG=$(VERSION) \
 		--build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
@@ -190,7 +195,7 @@ sales:
 
 metrics:
 	docker build \
-		-f zarf/docker/dockerfile.metrics \
+		-f docker/dockerfile.metrics \
 		-t $(METRICS_IMAGE) \
 		--build-arg BUILD_TAG=$(VERSION) \
 		--build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
@@ -198,7 +203,7 @@ metrics:
 
 auth:
 	docker build \
-		-f zarf/docker/dockerfile.auth \
+		-f docker/dockerfile.auth \
 		-t $(AUTH_IMAGE) \
 		--build-arg BUILD_TAG=$(VERSION) \
 		--build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
@@ -215,7 +220,7 @@ dev-up:
 	kind create cluster \
 		--image $(KIND) \
 		--name $(KIND_CLUSTER) \
-		--config zarf/k8s/dev/kind-config.yaml
+		--config deploy/k8s/dev/kind-config.yaml
 
 	kubectl wait --timeout=120s --namespace=local-path-storage --for=condition=Available deployment/local-path-provisioner
 
@@ -231,7 +236,7 @@ dev-down:
 	kind delete cluster --name $(KIND_CLUSTER)
 
 dev-up-registry:
-	KIND_CLUSTER_NAME=$(KIND_CLUSTER) ./zarf/k8s/dev/kind-with-registry.sh
+	KIND_CLUSTER_NAME=$(KIND_CLUSTER) ./deploy/k8s/dev/kind-with-registry.sh
 
 dev-down-registry:
 	kind delete cluster --name $(KIND_CLUSTER)
@@ -255,19 +260,19 @@ dev-load:
 	wait;
 
 dev-apply:
-	kustomize build zarf/k8s/dev/grafana | kubectl apply -f -
-	kustomize build zarf/k8s/dev/prometheus | kubectl apply -f -
-	kustomize build zarf/k8s/dev/tempo | kubectl apply -f -
-	kustomize build zarf/k8s/dev/loki | kubectl apply -f -
-	kustomize build zarf/k8s/dev/alloy | kubectl apply -f -
+	kustomize build deploy/k8s/dev/grafana | kubectl apply -f -
+	kustomize build deploy/k8s/dev/prometheus | kubectl apply -f -
+	kustomize build deploy/k8s/dev/tempo | kubectl apply -f -
+	kustomize build deploy/k8s/dev/loki | kubectl apply -f -
+	kustomize build deploy/k8s/dev/alloy | kubectl apply -f -
 
-	kustomize build zarf/k8s/dev/database | kubectl apply -f -
+	kustomize build deploy/k8s/dev/database | kubectl apply -f -
 	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s sts/database
 
-	kustomize build zarf/k8s/dev/auth | kubectl apply -f -
+	kustomize build deploy/k8s/dev/auth | kubectl apply -f -
 	kubectl wait pods --namespace=$(NAMESPACE) --selector app=$(AUTH_APP) --timeout=120s --for=condition=Ready
 
-	kustomize build zarf/k8s/dev/sales | kubectl apply -f -
+	kustomize build deploy/k8s/dev/sales | kubectl apply -f -
 	kubectl wait pods --namespace=$(NAMESPACE) --selector app=$(SALES_APP) --timeout=120s --for=condition=Ready
 
 dev-restart:
@@ -281,10 +286,10 @@ dev-update: build dev-load dev-restart
 dev-update-apply: build dev-load dev-apply
 
 dev-logs:
-	kubectl logs --namespace=$(NAMESPACE) -l app=$(SALES_APP) --all-containers=true -f --tail=100 --max-log-requests=6 | go run api/tooling/logfmt/main.go -service=$(SALES_APP)
+	kubectl logs --namespace=$(NAMESPACE) -l app=$(SALES_APP) --all-containers=true -f --tail=100 --max-log-requests=6 | go run cmd/logfmt/main.go -service=$(SALES_APP)
 
 dev-logs-auth:
-	kubectl logs --namespace=$(NAMESPACE) -l app=$(AUTH_APP) --all-containers=true -f --tail=100 | go run api/tooling/logfmt/main.go
+	kubectl logs --namespace=$(NAMESPACE) -l app=$(AUTH_APP) --all-containers=true -f --tail=100 | go run cmd/logfmt/main.go
 
 # ------------------------------------------------------------------------------
 
@@ -329,12 +334,12 @@ dev-logs-alloy:
 # ------------------------------------------------------------------------------
 
 dev-services-delete:
-	kustomize build zarf/k8s/dev/sales | kubectl delete -f -
-	kustomize build zarf/k8s/dev/grafana | kubectl delete -f -
-	kustomize build zarf/k8s/dev/tempo | kubectl delete -f -
-	kustomize build zarf/k8s/dev/loki | kubectl delete -f -
-	kustomize build zarf/k8s/dev/alloy | kubectl delete -f -
-	kustomize build zarf/k8s/dev/database | kubectl delete -f -
+	kustomize build deploy/k8s/dev/sales | kubectl delete -f -
+	kustomize build deploy/k8s/dev/grafana | kubectl delete -f -
+	kustomize build deploy/k8s/dev/tempo | kubectl delete -f -
+	kustomize build deploy/k8s/dev/loki | kubectl delete -f -
+	kustomize build deploy/k8s/dev/alloy | kubectl delete -f -
+	kustomize build deploy/k8s/dev/database | kubectl delete -f -
 
 dev-describe-replicaset:
 	kubectl get rs
@@ -362,24 +367,38 @@ dev-database-restart:
 # Docker Compose
 
 compose-up:
-	cd ./zarf/compose/ && docker compose -f docker_compose.yaml -p compose up -d
+	docker compose -f docker-compose.yaml -p compose up -d
 
 compose-build-up: build compose-up
 
 compose-down:
-	cd ./zarf/compose/ && docker compose -f docker_compose.yaml down
+	docker compose -f docker-compose.yaml -p compose down
 
 compose-logs:
-	cd ./zarf/compose/ && docker compose -f docker_compose.yaml logs
+	docker compose -f docker-compose.yaml -p compose logs
 
 # ==============================================================================
 # Administration
 
+# NOTE(AI): golang-migrate CLI (migration step (d)). Services and tests apply the
+# embedded migrations via `admin migrate`; these targets are for authoring and
+# manual runs against the compose database.
+MIGRATE_DB_URL ?= postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
+
+migrate-create:
+	$(BIN)/migrate create -ext sql -dir db/migrations -seq $(NAME)
+
+migrate-up:
+	$(BIN)/migrate -path db/migrations -database "$(MIGRATE_DB_URL)" up
+
+migrate-down:
+	$(BIN)/migrate -path db/migrations -database "$(MIGRATE_DB_URL)" down 1
+
 migrate:
-	export SALES_DB_HOST=localhost; go run api/tooling/admin/main.go migrate
+	export SALES_DB_HOST=localhost; go run cmd/admin/main.go migrate
 
 seed: migrate
-	export SALES_DB_HOST=localhost; go run api/tooling/admin/main.go seed
+	export SALES_DB_HOST=localhost; go run cmd/admin/main.go seed
 
 pgcli:
 	pgcli postgresql://postgres:postgres@localhost
@@ -391,16 +410,16 @@ readiness:
 	curl -i http://localhost:3000/v1/readiness
 
 token-gen:
-	export SALES_DB_HOST=localhost; go run api/tooling/admin/main.go gentoken 5cf37266-3473-4006-984f-9325122678b7 54bb2165-71e1-41a6-af3e-7da4a0e1e2c1
+	export SALES_DB_HOST=localhost; go run cmd/admin/main.go gentoken 5cf37266-3473-4006-984f-9325122678b7 54bb2165-71e1-41a6-af3e-7da4a0e1e2c1
 
 # ==============================================================================
 # Metrics and Tracing
 
 metrics-view-sc:
-	expvarmon -ports="localhost:3010" -vars="build,requests,goroutines,errors,panics,mem:memstats.HeapAlloc,mem:memstats.HeapSys,mem:memstats.Sys"
+	$(BIN)/expvarmon -ports="localhost:3010" -vars="build,requests,goroutines,errors,panics,mem:memstats.HeapAlloc,mem:memstats.HeapSys,mem:memstats.Sys"
 
 metrics-view:
-	expvarmon -ports="localhost:4020" -endpoint="/metrics" -vars="build,requests,goroutines,errors,panics,mem:memstats.HeapAlloc,mem:memstats.HeapSys,mem:memstats.Sys"
+	$(BIN)/expvarmon -ports="localhost:4020" -endpoint="/metrics" -vars="build,requests,goroutines,errors,panics,mem:memstats.HeapAlloc,mem:memstats.HeapSys,mem:memstats.Sys"
 
 grafana:
 	$(OPEN_CMD) http://localhost:3100/
@@ -419,17 +438,23 @@ test-r:
 	CGO_ENABLED=1 go test -race -count=1 ./...
 
 test-only:
-	CGO_ENABLED=0 go test -count=1 ./...
+	@# NOTE(AI): -p 4 limits parallel test packages; at the default (one per CPU) Docker
+	@# Desktop drops connections to the shared test Postgres container.
+	CGO_ENABLED=0 go test -p 4 -count=1 ./...
 
 fmt:
-	goimports -w .
+	$(BIN)/goimports -w .
+
+# NOTE(AI): Go files vendored inside the frontend's node_modules are not ours.
+GO_PKGS = $(shell go list ./... | grep -v /node_modules/)
 
 lint:
-	CGO_ENABLED=0 go vet ./...
-	staticcheck -checks=all ./...
+	@echo "go vet + staticcheck (node_modules excluded)"
+	@CGO_ENABLED=0 go vet $(GO_PKGS)
+	@$(BIN)/staticcheck -checks=all $(GO_PKGS)
 
 vuln-check:
-	govulncheck ./...
+	@$(BIN)/govulncheck $(GO_PKGS)
 
 test: test-only lint vuln-check
 
@@ -467,7 +492,7 @@ users-timeout:
 	-H "Authorization: Bearer ${TOKEN}" "http://localhost:3000/v1/users?page=1&rows=2"
 
 load:
-	hey -m GET -c 100 -n 1000 \
+	$(BIN)/hey -m GET -c 100 -n 1000 \
 	-H "Authorization: Bearer ${TOKEN}" "http://localhost:3000/v1/users?page=1&rows=2"
 
 otel-test:
@@ -479,10 +504,11 @@ otel-test:
 # Protobuf support
 
 authapp-proto-gen:
-	protoc --go_out=app/domain/grpcauthapp --go_opt=paths=source_relative \
-		--go-grpc_out=app/domain/grpcauthapp --go-grpc_opt=paths=source_relative \
-		--proto_path=app/domain/grpcauthapp \
-		app/domain/grpcauthapp/authapp.proto
+	protoc --plugin=protoc-gen-go=$(BIN)/protoc-gen-go --plugin=protoc-gen-go-grpc=$(BIN)/protoc-gen-go-grpc \
+		--go_out=internal/generated/authpb --go_opt=paths=source_relative \
+		--go-grpc_out=internal/generated/authpb --go-grpc_opt=paths=source_relative \
+		--proto_path=api/protobuf \
+		api/protobuf/authapp.proto
 
 # ==============================================================================
 # Modules support
@@ -514,13 +540,13 @@ list:
 # Class Stuff
 
 run-auth:
-	go run api/services/auth/main.go | go run api/tooling/logfmt/main.go
+	go run cmd/auth/main.go | go run cmd/logfmt/main.go
 
 run:
-	go run api/services/sales/main.go | go run api/tooling/logfmt/main.go
+	go run cmd/sales/main.go | go run cmd/logfmt/main.go
 
 run-help:
-	go run api/services/sales/main.go --help | go run api/tooling/logfmt/main.go
+	go run cmd/sales/main.go --help | go run cmd/logfmt/main.go
 
 curl:
 	curl -i http://localhost:3000/v1/hack
@@ -529,10 +555,10 @@ curl-auth:
 	curl -i -H "Authorization: Bearer ${TOKEN}" http://localhost:3000/v1/hackauth
 
 load-hack:
-	hey -m GET -c 100 -n 100000 "http://localhost:3000/v1/hack"
+	$(BIN)/hey -m GET -c 100 -n 100000 "http://localhost:3000/v1/hack"
 
 admin:
-	go run api/tooling/admin/main.go
+	go run cmd/admin/main.go
 
 ready:
 	curl -i http://localhost:3000/v1/readiness
@@ -554,7 +580,7 @@ talk-up:
 	kind create cluster \
 		--image $(KIND) \
 		--name $(KIND_CLUSTER) \
-		--config zarf/k8s/dev/kind-config.yaml
+		--config deploy/k8s/dev/kind-config.yaml
 
 	kubectl wait --timeout=120s --namespace=local-path-storage --for=condition=Available deployment/local-path-provisioner
 
@@ -567,19 +593,19 @@ talk-load:
 	wait;
 
 talk-apply:
-	kustomize build zarf/k8s/dev/database | kubectl apply -f -
+	kustomize build deploy/k8s/dev/database | kubectl apply -f -
 	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s sts/database
 
-	kustomize build zarf/k8s/dev/auth | kubectl apply -f -
+	kustomize build deploy/k8s/dev/auth | kubectl apply -f -
 	kubectl wait pods --namespace=$(NAMESPACE) --selector app=$(AUTH_APP) --timeout=120s --for=condition=Ready
 
-	kustomize build zarf/k8s/dev/sales | kubectl apply -f -
+	kustomize build deploy/k8s/dev/sales | kubectl apply -f -
 	kubectl wait pods --namespace=$(NAMESPACE) --selector app=$(SALES_APP) --timeout=120s --for=condition=Ready
 
 talk-run: build talk-up talk-load talk-apply
 
 talk-run-load:
-	hey -m GET -c 10 -n 1000 -H "Authorization: Bearer ${TOKEN}" "http://localhost:3000/v1/users?page=1&rows=2"
+	$(BIN)/hey -m GET -c 10 -n 1000 -H "Authorization: Bearer ${TOKEN}" "http://localhost:3000/v1/users?page=1&rows=2"
 
 talk-logs:
 	kubectl logs --namespace=$(NAMESPACE) -l app=$(SALES_APP) --all-containers=true -f --tail=100 --max-log-requests=6
@@ -597,12 +623,12 @@ talk-describe-min:
 	kubectl describe pod --namespace=$(NAMESPACE) -l app=$(SALES_APP) | grep -i -A 21 '  sales:' | sed -n '1p;3p;11,16p;18,22p'
 
 talk-metrics:
-	expvarmon -ports="localhost:4000" -vars="build,requests,goroutines,errors,panics,mem:memstats.HeapAlloc,mem:memstats.HeapSys,mem:memstats.Sys"
+	$(BIN)/expvarmon -ports="localhost:4000" -vars="build,requests,goroutines,errors,panics,mem:memstats.HeapAlloc,mem:memstats.HeapSys,mem:memstats.Sys"
 
 # ==============================================================================
 # Admin Frontend
 
-ADMIN_FRONTEND_PREFIX := ./api/frontends/admin
+ADMIN_FRONTEND_PREFIX := ./frontend/admin
 
 write-token-to-env:
 	echo "VITE_SERVICE_API=http://localhost:3000/v1" > ${ADMIN_FRONTEND_PREFIX}/.env
@@ -719,10 +745,10 @@ chart-install:
 		echo "Example: make chart-install CHART=sales ENV=prod"; \
 		exit 1; \
 	fi
-	helm install $(CHART) ./zarf/helm/charts/$(CHART) \
+	helm install $(CHART) ./deploy/helm/charts/$(CHART) \
 		--namespace $(NAMESPACE) \
 		--create-namespace \
-		--values ./zarf/helm/charts/$(CHART)/values-$(ENV).yaml \
+		--values ./deploy/helm/charts/$(CHART)/values-$(ENV).yaml \
 		--wait \
 		--timeout 10m
 
@@ -733,9 +759,9 @@ chart-upgrade:
 		echo "Example: make chart-upgrade CHART=sales ENV=prod"; \
 		exit 1; \
 	fi
-	helm upgrade $(CHART) ./zarf/helm/charts/$(CHART) \
+	helm upgrade $(CHART) ./deploy/helm/charts/$(CHART) \
 		--namespace $(NAMESPACE) \
-		--values ./zarf/helm/charts/$(CHART)/values-$(ENV).yaml \
+		--values ./deploy/helm/charts/$(CHART)/values-$(ENV).yaml \
 		--wait \
 		--timeout 10m
 
@@ -755,8 +781,8 @@ chart-template:
 		echo "Example: make chart-template CHART=sales ENV=dev"; \
 		exit 1; \
 	fi
-	helm template $(CHART) ./zarf/helm/charts/$(CHART) \
-		--values ./zarf/helm/charts/$(CHART)/values-$(ENV).yaml \
+	helm template $(CHART) ./deploy/helm/charts/$(CHART) \
+		--values ./deploy/helm/charts/$(CHART)/values-$(ENV).yaml \
 		--debug
 
 # Lint individual chart
@@ -766,4 +792,4 @@ chart-lint:
 		echo "Example: make chart-lint CHART=sales"; \
 		exit 1; \
 	fi
-	helm lint ./zarf/helm/charts/$(CHART)
+	helm lint ./deploy/helm/charts/$(CHART)

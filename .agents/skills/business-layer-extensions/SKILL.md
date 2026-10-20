@@ -1,11 +1,11 @@
 ---
 name: business-layer-extensions
-description: Use when adding a cross-cutting concern (OTEL tracing, logging, metrics, caching, auth) to a business domain, creating files under business/domain/*/extensions/*, or adding the extension seam (ExtBusiness/Extension) to a *bus package.
+description: Use when adding a cross-cutting concern (OTEL tracing, logging, metrics, caching, auth) to a usecase domain, creating files under internal/<domain>/usecase/extensions/*, or adding the extension seam (ExtBusiness/Extension) to a usecase package.
 ---
 
 # Business Layer Extensions
 
-The business layer layers cross-cutting concerns onto core domain logic with a
+The usecase layer layers cross-cutting concerns onto core domain logic with a
 **decorator pattern**: each extension wraps an `ExtBusiness` and delegates to it.
 **Wrap, never modify the core `Business`.** An extension that adds tracing to one
 method must still implement every other method as a plain pass-through.
@@ -15,15 +15,15 @@ It comes in three coordinated pieces: the **seam** on the bus (Piece 1), the
 
 ## Checklist
 
-1. **Seam exists?** Confirm the target `<x>bus.go` has `ExtBusiness`, `Extension`,
+1. **Seam exists?** Confirm the target `internal/<x>/usecase/<x>.go` has `ExtBusiness`, `Extension`,
    and the reverse-apply loop in `NewBusiness`. If not, add them (piece 1).
-2. **Create** `extensions/<x><concern>/<x><concern>.go` (piece 2).
+2. **Create** `internal/<x>/usecase/extensions/<x><concern>/<x><concern>.go` (piece 2).
 3. **Implement EVERY `ExtBusiness` method** — wrap the relevant ones, pass the rest
    straight through to `ext.bus`. Missing one fails to satisfy the interface and
    won't compile.
-4. **Wire** into `api/services/*/main.go` in the right order (piece 3).
+4. **Wire** into `internal/app/<svc>/app.go` in the right order (piece 3).
 
-## Piece 1 — the seam (in `<x>bus/<x>bus.go`)
+## Piece 1 — the seam (in `internal/<x>/usecase/<x>.go`)
 
 ```go
 // ExtBusiness lists every public method an extension can wrap.
@@ -47,7 +47,7 @@ func NewBusiness(log *logger.Logger, delegate *delegate.Delegate, storer Storer,
 }
 ```
 
-## Piece 2 — the extension (`extensions/<x><concern>/<x><concern>.go`)
+## Piece 2 — the extension (`internal/<x>/usecase/extensions/<x><concern>/<x><concern>.go`)
 
 Package name is `<x><concern>` (e.g. `widgetotel`, `widgetlog`). Struct holds the
 wrapped bus plus any deps; `NewExtension` returns the closure.
@@ -118,7 +118,12 @@ func (ext *Extension) Create(ctx context.Context, input widgetbus.CreateWidgetIn
 }
 ```
 
-## Piece 3 — wiring (`api/services/*/main.go`)
+## Piece 3 — wiring (`internal/app/<svc>/app.go`)
+
+Per `golang_project_structure.md`, all dependency wiring is done by hand in
+`internal/app` (no `google/wire`). This repo keeps several services, so each has its own
+package: `internal/app/<svc>/app.go` (`sales`, `auth`, `metrics`), with route sets in
+`internal/app/<svc>/routes*.go`; `cmd/<svc>/main.go` only calls `<svc>app.Run(ctx, tag)`.
 
 Construct each extension, then pass them as the trailing variadic args to `NewBusiness`
 in outermost-first order:

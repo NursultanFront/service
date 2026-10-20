@@ -3,6 +3,8 @@
 .misc
 
 # Project
+# NOTE(AI): dev tools and binaries built from tools/ (migration step (e)).
+/bin/
 app/services/sales-api/sales-api
 app/services/metrics/metrics
 app/tooling/sales-admin/sales-admin
@@ -12,7 +14,7 @@ app/tooling/sales-admin/docs
 database-data/
 
 # Environment
-api/cmd/frontends/admin/.env
+frontend/admin/.env
 
 # Mac
 .DS_Store
@@ -28,7 +30,7 @@ api/cmd/frontends/admin/.env
 # Folders
 _obj
 _test
-zarf/build/
+deploy/build/
 vendor/
 
 # Editor files
@@ -54,4 +56,4 @@ _testmain.go
 *.exe
 //*.test
 .vscode/tasks.json
-zarf/compose/database-data/data
+docker/database-data/

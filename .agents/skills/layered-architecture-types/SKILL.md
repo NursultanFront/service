@@ -1,30 +1,43 @@
 ---
 name: layered-architecture-types
-description: Enforce primitive-at-edges / strong-types-in-Business layering and the toBus/fromBusResponse/toDB converter pattern. Use when writing, editing, or auditing Go files under app/*, business/domain/*, or .../stores/*db.
+description: Enforce primitive-at-edges / strong-types-in-Usecase-and-Models layering and the toBus/fromBusResponse/toDB converter pattern. Use when writing, editing, or auditing Go files under internal/handler/*, internal/<domain>/usecase, internal/<domain>/models, or internal/<domain>/repository.
 ---
 
 # Layered Architecture Types
 
-Data crosses three layers. **Primitive types live at the edges (API JSON and DB
-rows); strong types from `business/types` live only in the Business layer.** Every
+Data crosses three layers. **Primitive types live at the edges (API JSON in `internal/handler/*` and DB
+rows in `internal/<domain>/repository`); strong types from `internal/types/*` and domain structs in `internal/<domain>/models` live in the Usecase/Models layer.** Every
 crossing goes through a named conversion function — never assign across a boundary
 directly, and never let a strong type appear in an API request/response struct or a
 DB row struct.
 
 ```
-API (app/*)            Business (business/domain/*)        Storage (.../stores/*db)
-primitive types  ──►   strong types (business/types/*)    ──►   native DB types
-request struct    toBus<Type>          model type        toDB<Type>     db<Type> row
-response struct   ◄── fromBus<Type>Response   ◄── toBus<Type>  ◄──
-                      (App layer)                  (Storage layer)
+API (internal/handler/*)  Usecase/Models (internal/<domain>/usecase & internal/<domain>/models)  Storage (internal/<domain>/repository)
+primitive types     ──►   strong types (internal/types/*)             ──►   native DB types
+request struct       toBus<Type>               model type               toDB<Type>     db<Type> row
+response struct      ◄── fromBus<Type>Response / toApp<Type>             ◄── toBus<Type>  ◄──
+                         (Handler layer)                                     (Repository layer)
 ```
 
 ## When to Apply
 
-- Writing or editing API request/response types under `app/*`
-- Writing or editing Business model types under `business/domain/*/model.go`
-- Writing or editing DB row structs and store code under `.../stores/*db`
+- Writing or editing API request/response types under `internal/handler/*`
+- Writing or editing Business model types under `internal/<domain>/models/*.go` or `internal/<domain>/usecase`
+- Writing or editing DB row structs and store code under `internal/<domain>/repository`
 - Auditing any of the above for layering conformance
+
+## Where each piece lives (`golang_project_structure.md`)
+
+Folder layout and file names follow the project standard `golang_project_structure.md`
+(Method 2 — domain layout `internal/<domain>/{models,usecase,repository}`, see AGENTS.md). File names per layer (renamed in migration step (b)); do not create new files with the
+legacy Ardan Labs names (`<x>bus.go`, `<x>db.go`, `<x>app.go`, `model.go`):
+
+| Layer      | Package                          | Files                                                                 |
+|------------|----------------------------------|-----------------------------------------------------------------------|
+| Handler    | `internal/handler/http/<entity>` | `dto.go` (request/response + `toBus*`/`fromBus*Response`), `<entity>_handler.go` |
+| Usecase    | `internal/<entity>/usecase`      | `deps.go` (consumer interfaces), `<entity>.go`; import alias `<entity>bus` |
+| Models     | `internal/<entity>/models`       | `<entity>.go`, `query.go` (`QueryFilter`, `OrderBy*`, `Storer`, `ErrNotFound` — no entity prefix); import alias `<entity>models`. Shared strong types in `internal/types/<type>/` |
+| Repository | `internal/<entity>/repository`   | `<entity>_repository.go`, row structs + `toDB*`/`toBus*` in `dto.go`, optional `query.go` |
 
 ## User controls the types (MUST)
 
@@ -36,8 +49,8 @@ representations, converter signatures, and any wrapper types.
   field, converter return) and get the user's explicit confirmation. Do not finalize
   on an assumed default.
 - **Suggest existing types first.** When proposing a type, prefer one that already
-  exists: a strong type from one of the `business/types/*` subpackages for the
-  Business layer, or a type already defined locally in the package(s) you are
+  exists: a strong type from one of the `internal/types/*` subpackages for the
+  Usecase/Models layer, or a type already defined locally in the package(s) you are
   editing. Only propose a brand-new type when nothing existing fits, and say why.
 - Call out anything noteworthy for them to decide: pointer vs value, `sql.Null*` vs
   wrapper, `json.RawMessage` vs a typed struct, and how NULL/empty is represented.
@@ -46,33 +59,40 @@ representations, converter signatures, and any wrapper types.
 
 ## Type boundaries (MUST)
 
-- **API request/response structs** (`app/*`): primitives only — `string`, `int`,
-  `bool`, `json.RawMessage`, `time.Time`, and slices/structs of these. Never a
-  `business/types/*` strong type.
-- **Business model types** (`business/domain/*/model.go`): strong types for
+- **API request/response structs** (`internal/handler/*`): primitives only — `string`, `int`,
+  `bool`, `json.RawMessage`, `time.Time`, and slices/structs of these. Never an
+  `internal/types/*` strong type.
+- **Business model types** (`internal/<domain>/models/*.go`): strong types for
   IDs, enums, and classifications.
-- **DB row structs** (`.../stores/*db`): native/SQL types only — `string`,
-  `sql.Null*`, `json.RawMessage`, `time.Time`. Never a `business/types` strong
+- **DB row structs** (`internal/<domain>/repository`): native/SQL types only — `string`,
+  `sql.Null*`, `json.RawMessage`, `time.Time`. Never an `internal/types` strong
   type, **including validated enums — store them as `string`.**
 
 ## Package imports (MUST)
 
-- **No cross-domain Business imports.** A Business domain package
-  (`business/domain/<x>bus`) must not import another Business domain package
-  (`.../<y>bus`). Compose across domains in the App layer, not by reaching sideways
-  in Business.
-- **No cross-domain App imports.** An App domain package (`app/domain/<x>app`)
-  must not import another App domain package (`.../<y>app`).
-- **An App package may import several Business domain packages.** This is the
-  intended place to combine domains — e.g. an app handler importing both
-  `<x>bus` and `<y>bus` to assemble a response is allowed and expected.
-- `business/types/*` and `foundation/*` are shared leaf packages: any layer may
-  import them, and they must not import App or Business domain packages.
+- **No cross-domain Usecase imports.** A Usecase domain package
+  (`internal/<x>/usecase`) must not import another Usecase domain package
+  (`internal/<y>/usecase`). Compose across domains in the Handler layer, not by reaching sideways
+  in Usecase.
+- **No cross-domain Handler imports.** A Handler domain package (`internal/handler/http/<x>`)
+  must not import another Handler domain package (`internal/handler/http/<y>`).
+- **A Handler package may import several Usecase domain packages.** This is the
+  intended place to combine domains — e.g. an HTTP handler importing both
+  `usecase/<x>` and `usecase/<y>` to assemble a response is allowed and expected.
+- `internal/<domain>/models`, `internal/types/*`, `internal/sys/*`, and (legacy)
+  `pkg/foundation/*` are shared leaf packages: any layer may import them, and they must
+  not import Handler, Usecase, or Repository domain packages. Per the standard, internal
+  infrastructure (logger, web, otel, keystore, worker, …) belongs in `internal/sys/*`;
+  `pkg/foundation/*` is a migration leftover and moves there (see `docs/MIGRATION_PLAN.md`).
+  `pkg/` is only for code meant to be imported by other services — never add new internal
+  infrastructure to `pkg/`. Known exceptions today: `internal/sys/auth` (imports
+  `internal/user/usecase`) and test helper `internal/sys/dbtest` (imports usecases) — do
+  not add more; see `docs/MIGRATION_PLAN.md`.
 
 ## Foundation types are wrapped, not used directly (MUST)
 
-Foundation types (`foundation/*`) must not appear directly in `business/types/*`
-aggregate types or in Business domain models. Define a `business/types` wrapper
+Foundation types (`pkg/foundation/*`) must not appear directly in `internal/types/*`
+aggregate types or in `internal/<domain>/models` domain models. Define an `internal/types` wrapper
 type and convert via `toFoundation<T>` / `fromFoundation<T>` at the
 foundation-client boundary. A wrapper may store the foundation value in an
 unexported field and delegate (un)marshaling to it; the public type the aggregate
@@ -109,23 +129,23 @@ non-pointer way to express the requirement, and say why in the proposal.
 
 ## Converter functions (MUST exist per type, both directions)
 
-| Direction          | Layer pair         | Name                    | Returns |
-|--------------------|--------------------|-------------------------|---------|
-| primitive → strong | App → Business     | `toBus<Type>`           | `(busInput, error)` — parse + validate, accumulate `errs.FieldErrors` |
-| strong → primitive | Business → App     | `fromBus<Type>Response` | response struct — convert each strong field with `.String()` etc. |
-| strong → native    | Business → Storage | `toDB<Type>`            | db row struct |
-| native → strong    | Storage → Business | `toBus<Type>`           | `(busType, error)` — parse via the relevant `business/types/*` `Parse*` |
+| Direction          | Layer pair           | Name                              | Returns |
+|--------------------|----------------------|-----------------------------------|---------|
+| primitive → strong | Handler → Usecase    | `toBus<Type>`                     | `(busInput, error)` — parse + validate, accumulate `errs.FieldErrors` |
+| strong → primitive | Usecase → Handler    | `fromBus<Type>Response` / `toApp<Type>` | response struct — convert each strong field with `.String()` etc. |
+| strong → native    | Usecase → Repository | `toDB<Type>`                      | db row struct |
+| native → strong    | Repository → Usecase | `toBus<Type>`                     | `(busType, error)` — parse via the relevant `internal/types/*` `Parse*` |
 
 Rules for these functions:
 
-- **All parsing and validation happens in the App-layer `toBus<Type>`.** Parse each
+- **All parsing and validation happens in the Handler-layer `toBus<Type>`.** Parse each
   primitive into its strong type; on failure `fieldErrors.Add(field, err)` and
   return `errs.FieldErrors`. The request struct carries only strings — do not put
   strong types in it and do not validate strong types there.
 - `fromBus<Type>Response` converts explicitly (`id.String()`, `cls.String()`).
   Never rely on a strong type's `MarshalJSON` to hide a leak — the field type in
   the response struct must already be primitive.
-- Storage `toBus<Type>` validates native values back into strong types and returns
+- Repository `toBus<Type>` validates native values back into strong types and returns
   an error (e.g. `<subpkg>.Parse<Type>(row.ID)`); `toDB<Type>` calls `.String()` to
   flatten strong types into natives.
 - One converter pair per persisted type, per CRUD op that needs it (Create / Get /
@@ -133,7 +153,7 @@ Rules for these functions:
 
 ## Constructor naming: Parse / MustParse only (MUST)
 
-Strong types in `business/types/*` (IDs, enums, classifications, names, sizes) MUST
+Strong types in `internal/types/*` (IDs, enums, classifications, names, sizes) MUST
 expose their public constructors as `Parse<Type>` and `MustParse<Type>` — never
 `New<Type>` or `MustNew<Type>`.
 
@@ -149,7 +169,7 @@ expose their public constructors as `Parse<Type>` and `MustParse<Type>` — neve
   `New*` form when the user gives a concrete, convincing reason; when in doubt, ask
   the user rather than introducing or retaining a `New*` constructor.
 
-## Example — App layer (both directions)
+## Example — Handler layer (both directions)
 
 ```go
 // Request carries only primitives.
@@ -159,7 +179,7 @@ type CreateWidgetRequest struct {
 }
 
 // toBus parses + validates here.
-func toBusCreateWidget(req CreateWidgetRequest) (widgetbus.CreateWidgetInput, error) {
+func toBusCreateWidget(req CreateWidgetRequest) (models.NewWidget, error) {
 	var fieldErrors errs.FieldErrors
 
 	ownerID, err := types.ParseOwnerID(req.OwnerID)
@@ -168,17 +188,17 @@ func toBusCreateWidget(req CreateWidgetRequest) (widgetbus.CreateWidgetInput, er
 	}
 
 	if len(fieldErrors) > 0 {
-		return widgetbus.CreateWidgetInput{}, fieldErrors
+		return models.NewWidget{}, fieldErrors
 	}
 
-	return widgetbus.CreateWidgetInput{
+	return models.NewWidget{
 		Name:    strings.TrimSpace(req.Name),
 		OwnerID: ownerID,
 	}, nil
 }
 
 // fromBus converts strong -> primitive explicitly.
-func fromBusCreateWidgetResponse(w widgetbus.Widget) CreateWidgetResponse {
+func fromBusCreateWidgetResponse(w models.Widget) CreateWidgetResponse {
 	return CreateWidgetResponse{
 		ID:      w.ID.String(),
 		OwnerID: w.OwnerID.String(),
@@ -187,7 +207,7 @@ func fromBusCreateWidgetResponse(w widgetbus.Widget) CreateWidgetResponse {
 }
 ```
 
-## Example — Storage layer (both directions)
+## Example — Repository layer (both directions)
 
 ```go
 type dbWidget struct {
@@ -195,20 +215,20 @@ type dbWidget struct {
 	OwnerID string `db:"owner_id"`
 }
 
-func toDBWidget(w widgetbus.Widget) dbWidget {
+func toDBWidget(w models.Widget) dbWidget {
 	return dbWidget{
 		ID:      w.ID.String(),
 		OwnerID: w.OwnerID.String(),
 	}
 }
 
-func toBusWidget(row dbWidget) (widgetbus.Widget, error) {
+func toBusWidget(row dbWidget) (models.Widget, error) {
 	id, err := types.ParseWidgetID(row.ID)
 	if err != nil {
-		return widgetbus.Widget{}, fmt.Errorf("parse widget id: %w", err)
+		return models.Widget{}, fmt.Errorf("parse widget id: %w", err)
 	}
 	// ... parse remaining native values into strong types ...
-	return widgetbus.Widget{ID: id /* ... */}, nil
+	return models.Widget{ID: id /* ... */}, nil
 }
 ```
 
@@ -218,25 +238,25 @@ Names above are illustrative — do not confuse them with real codebase symbols.
 
 Before finishing work on any layer, confirm:
 
-- [ ] No `business/types` strong type appears in an API request/response struct.
-- [ ] No `business/types` strong type appears in a DB row struct (validated enums
+- [ ] No `internal/types` strong type appears in an API request/response struct.
+- [ ] No `internal/types` strong type appears in a DB row struct (validated enums
       stored as `string`).
-- [ ] Each crossing has its named function: `toBus<Type>`, `fromBus<Type>Response`,
-      `toDB<Type>`, and storage `toBus<Type>`.
-- [ ] App-layer `toBus<Type>` parses + validates and returns `errs.FieldErrors`.
+- [ ] Each crossing has its named function: `toBus<Type>`, `fromBus<Type>Response` / `toApp<Type>`,
+      `toDB<Type>`, and repository `toBus<Type>`.
+- [ ] Handler-layer `toBus<Type>` parses + validates and returns `errs.FieldErrors`.
 - [ ] `fromBus<Type>Response` converts every strong field explicitly (no reliance
       on `MarshalJSON`).
-- [ ] Storage `toBus<Type>` returns an error and parses natives into strong types.
+- [ ] Repository `toBus<Type>` returns an error and parses natives into strong types.
 - [ ] Strong-type constructors are named `Parse<Type>` / `MustParse<Type>`, not
       `New*` / `MustNew*` (unless the user gave a concrete reason to keep a `New*`).
 - [ ] No pointer type was introduced where a value type, `sql.Null*`, or "is set"
       flag would do.
-- [ ] Proposed types reused an existing `business/types/*` or local package type
+- [ ] Proposed types reused an existing `internal/types/*` or local package type
       where one fit, rather than defining a new type.
-- [ ] No Business domain package imports another Business domain package, and no App
-      domain package imports another App domain package.
-- [ ] No `foundation/*` type appears directly in a `business/types` aggregate or a
-      Business domain model; each is wrapped with `toFoundation`/`fromFoundation`
+- [ ] No Usecase domain package imports another Usecase domain package, and no Handler
+      domain package imports another Handler domain package.
+- [ ] No `pkg/foundation/*` type appears directly in an `internal/types` aggregate or an
+      `internal/<domain>/models` domain model; each is wrapped with `toFoundation`/`fromFoundation`
       converters.
 - [ ] The user confirmed the concrete types at each affected boundary before this
       work was finalized.
@@ -244,6 +264,6 @@ Before finishing work on any layer, confirm:
 ## When NOT to Apply
 
 - Internal helpers and code that never crosses a layer boundary.
-- Foundation packages (`foundation/*`) and `business/types/*` themselves.
-- Pure intra-package refactors that don't move data between App, Business, or
-  Storage.
+- Foundation packages (`pkg/foundation/*`) and `internal/types/*` themselves.
+- Pure intra-package refactors that don't move data between Handler, Usecase, or
+  Repository.

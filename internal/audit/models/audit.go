@@ -1,0 +1,36 @@
+// Package models holds the audit domain entities, query filter, and order-by
+// fields shared by its usecase and repository layers.
+package models
+
+import (
+	"encoding/json"
+	"time"
+
+	"github.com/ardanlabs/service/internal/types/domain"
+	"github.com/ardanlabs/service/internal/types/name"
+	"github.com/google/uuid"
+)
+
+// Audit represents information about an individual audit record.
+type Audit struct {
+	ID        uuid.UUID
+	ObjID     uuid.UUID
+	ObjDomain domain.Domain
+	ObjName   name.Name
+	ActorID   uuid.UUID
+	Action    string
+	Data      json.RawMessage
+	Message   string
+	Timestamp time.Time
+}
+
+// NewAudit represents the information needed to create a new audit record.
+type NewAudit struct {
+	ObjID     uuid.UUID
+	ObjDomain domain.Domain
+	ObjName   name.Name
+	ActorID   uuid.UUID
+	Action    string
+	Data      any
+	Message   string
+}
