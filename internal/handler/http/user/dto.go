@@ -6,11 +6,12 @@ import (
 	"net/mail"
 	"time"
 
+	usermodels "github.com/ardanlabs/service/internal/user/models"
+
 	errs "github.com/ardanlabs/service/internal/errors"
-	"github.com/ardanlabs/service/internal/models"
-	"github.com/ardanlabs/service/internal/models/types/name"
-	"github.com/ardanlabs/service/internal/models/types/password"
-	"github.com/ardanlabs/service/internal/models/types/role"
+	"github.com/ardanlabs/service/internal/types/name"
+	"github.com/ardanlabs/service/internal/types/password"
+	"github.com/ardanlabs/service/internal/types/role"
 )
 
 // User represents information about an individual user.
@@ -31,7 +32,7 @@ func (app User) Encode() ([]byte, string, error) {
 	return data, "application/json", err
 }
 
-func toAppUser(bus models.User) User {
+func toAppUser(bus usermodels.User) User {
 	return User{
 		ID:          bus.ID.String(),
 		Name:        bus.Name.String(),
@@ -44,7 +45,7 @@ func toAppUser(bus models.User) User {
 	}
 }
 
-func toAppUsers(users []models.User) []User {
+func toAppUsers(users []usermodels.User) []User {
 	app := make([]User, len(users))
 	for i, usr := range users {
 		app[i] = toAppUser(usr)
@@ -70,7 +71,7 @@ func (app *NewUser) Decode(data []byte) error {
 	return json.Unmarshal(data, app)
 }
 
-func toBusNewUser(app NewUser) (models.NewUser, error) {
+func toBusNewUser(app NewUser) (usermodels.NewUser, error) {
 	var errors errs.FieldErrors
 
 	roles, err := role.ParseMany(app.Roles)
@@ -99,10 +100,10 @@ func toBusNewUser(app NewUser) (models.NewUser, error) {
 	}
 
 	if len(errors) > 0 {
-		return models.NewUser{}, fmt.Errorf("validate: %w", errors.ToError())
+		return usermodels.NewUser{}, fmt.Errorf("validate: %w", errors.ToError())
 	}
 
-	bus := models.NewUser{
+	bus := usermodels.NewUser{
 		Name:       nme,
 		Email:      *addr,
 		Roles:      roles,
@@ -125,7 +126,7 @@ func (app *UpdateUserRole) Decode(data []byte) error {
 	return json.Unmarshal(data, app)
 }
 
-func toBusUpdateUserRole(app UpdateUserRole) (models.UpdateUser, error) {
+func toBusUpdateUserRole(app UpdateUserRole) (usermodels.UpdateUser, error) {
 	var errors errs.FieldErrors
 
 	var roles []role.Role
@@ -138,10 +139,10 @@ func toBusUpdateUserRole(app UpdateUserRole) (models.UpdateUser, error) {
 	}
 
 	if len(errors) > 0 {
-		return models.UpdateUser{}, fmt.Errorf("validate: %w", errors.ToError())
+		return usermodels.UpdateUser{}, fmt.Errorf("validate: %w", errors.ToError())
 	}
 
-	bus := models.UpdateUser{
+	bus := usermodels.UpdateUser{
 		Roles: roles,
 	}
 
@@ -165,7 +166,7 @@ func (app *UpdateUser) Decode(data []byte) error {
 	return json.Unmarshal(data, app)
 }
 
-func toBusUpdateUser(app UpdateUser) (models.UpdateUser, error) {
+func toBusUpdateUser(app UpdateUser) (usermodels.UpdateUser, error) {
 	var errors errs.FieldErrors
 
 	var addr *mail.Address
@@ -203,10 +204,10 @@ func toBusUpdateUser(app UpdateUser) (models.UpdateUser, error) {
 	pass = &p
 
 	if len(errors) > 0 {
-		return models.UpdateUser{}, fmt.Errorf("validate: %w", errors.ToError())
+		return usermodels.UpdateUser{}, fmt.Errorf("validate: %w", errors.ToError())
 	}
 
-	bus := models.UpdateUser{
+	bus := usermodels.UpdateUser{
 		Name:       nme,
 		Email:      addr,
 		Department: department,

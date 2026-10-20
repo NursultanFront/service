@@ -6,11 +6,13 @@ import (
 	"context"
 	"net/mail"
 
-	"github.com/ardanlabs/service/internal/models"
-	"github.com/ardanlabs/service/internal/models/types/domain"
+	auditmodels "github.com/ardanlabs/service/internal/audit/models"
+	usermodels "github.com/ardanlabs/service/internal/user/models"
+
 	sqldb "github.com/ardanlabs/service/internal/sys/db"
 	"github.com/ardanlabs/service/internal/sys/order"
 	"github.com/ardanlabs/service/internal/sys/page"
+	"github.com/ardanlabs/service/internal/types/domain"
 	auditbus "github.com/ardanlabs/service/internal/usecase/audit"
 	userbus "github.com/ardanlabs/service/internal/usecase/user"
 	"github.com/google/uuid"
@@ -38,13 +40,13 @@ func (ext *Extension) NewWithTx(tx sqldb.CommitRollbacker) (userbus.ExtBusiness,
 }
 
 // Create applies auditing to the user creation process.
-func (ext *Extension) Create(ctx context.Context, actorID uuid.UUID, nu models.NewUser) (models.User, error) {
+func (ext *Extension) Create(ctx context.Context, actorID uuid.UUID, nu usermodels.NewUser) (usermodels.User, error) {
 	usr, err := ext.bus.Create(ctx, actorID, nu)
 	if err != nil {
-		return models.User{}, err
+		return usermodels.User{}, err
 	}
 
-	na := models.NewAudit{
+	na := auditmodels.NewAudit{
 		ObjID:     usr.ID,
 		ObjDomain: domain.User,
 		ObjName:   usr.Name,
@@ -55,20 +57,20 @@ func (ext *Extension) Create(ctx context.Context, actorID uuid.UUID, nu models.N
 	}
 
 	if _, err := ext.auditBus.Create(ctx, na); err != nil {
-		return models.User{}, err
+		return usermodels.User{}, err
 	}
 
 	return usr, nil
 }
 
 // Update applies auditing to the user update process.
-func (ext *Extension) Update(ctx context.Context, actorID uuid.UUID, usr models.User, uu models.UpdateUser) (models.User, error) {
+func (ext *Extension) Update(ctx context.Context, actorID uuid.UUID, usr usermodels.User, uu usermodels.UpdateUser) (usermodels.User, error) {
 	usr, err := ext.bus.Update(ctx, actorID, usr, uu)
 	if err != nil {
-		return models.User{}, err
+		return usermodels.User{}, err
 	}
 
-	na := models.NewAudit{
+	na := auditmodels.NewAudit{
 		ObjID:     usr.ID,
 		ObjDomain: domain.User,
 		ObjName:   usr.Name,
@@ -79,19 +81,19 @@ func (ext *Extension) Update(ctx context.Context, actorID uuid.UUID, usr models.
 	}
 
 	if _, err := ext.auditBus.Create(ctx, na); err != nil {
-		return models.User{}, err
+		return usermodels.User{}, err
 	}
 
 	return usr, nil
 }
 
 // Delete applies auditing to the user deletion process.
-func (ext *Extension) Delete(ctx context.Context, actorID uuid.UUID, usr models.User) error {
+func (ext *Extension) Delete(ctx context.Context, actorID uuid.UUID, usr usermodels.User) error {
 	if err := ext.bus.Delete(ctx, actorID, usr); err != nil {
 		return err
 	}
 
-	na := models.NewAudit{
+	na := auditmodels.NewAudit{
 		ObjID:     usr.ID,
 		ObjDomain: domain.User,
 		ObjName:   usr.Name,
@@ -109,7 +111,7 @@ func (ext *Extension) Delete(ctx context.Context, actorID uuid.UUID, usr models.
 }
 
 // Query does not apply auditing.
-func (ext *Extension) Query(ctx context.Context, filter userbus.QueryFilter, orderBy order.By, page page.Page) ([]models.User, error) {
+func (ext *Extension) Query(ctx context.Context, filter userbus.QueryFilter, orderBy order.By, page page.Page) ([]usermodels.User, error) {
 	return ext.bus.Query(ctx, filter, orderBy, page)
 }
 
@@ -119,16 +121,16 @@ func (ext *Extension) Count(ctx context.Context, filter userbus.QueryFilter) (in
 }
 
 // QueryByID does not apply auditing.
-func (ext *Extension) QueryByID(ctx context.Context, userID uuid.UUID) (models.User, error) {
+func (ext *Extension) QueryByID(ctx context.Context, userID uuid.UUID) (usermodels.User, error) {
 	return ext.bus.QueryByID(ctx, userID)
 }
 
 // QueryByEmail does not apply auditing.
-func (ext *Extension) QueryByEmail(ctx context.Context, email mail.Address) (models.User, error) {
+func (ext *Extension) QueryByEmail(ctx context.Context, email mail.Address) (usermodels.User, error) {
 	return ext.bus.QueryByEmail(ctx, email)
 }
 
 // Authenticate does not apply auditing.
-func (ext *Extension) Authenticate(ctx context.Context, email mail.Address, password string) (models.User, error) {
+func (ext *Extension) Authenticate(ctx context.Context, email mail.Address, password string) (usermodels.User, error) {
 	return ext.bus.Authenticate(ctx, email, password)
 }

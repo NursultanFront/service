@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"time"
 
+	productmodels "github.com/ardanlabs/service/internal/product/models"
+
 	errs "github.com/ardanlabs/service/internal/errors"
 	"github.com/ardanlabs/service/internal/handler/http/mid"
-	"github.com/ardanlabs/service/internal/models"
-	"github.com/ardanlabs/service/internal/models/types/money"
-	"github.com/ardanlabs/service/internal/models/types/name"
-	"github.com/ardanlabs/service/internal/models/types/quantity"
+	"github.com/ardanlabs/service/internal/types/money"
+	"github.com/ardanlabs/service/internal/types/name"
+	"github.com/ardanlabs/service/internal/types/quantity"
 )
 
 // Product represents information about an individual product.
@@ -31,7 +32,7 @@ func (app Product) Encode() ([]byte, string, error) {
 	return data, "application/json", err
 }
 
-func toAppProduct(prd models.Product) Product {
+func toAppProduct(prd productmodels.Product) Product {
 	return Product{
 		ID:          prd.ID.String(),
 		UserID:      prd.UserID.String(),
@@ -43,7 +44,7 @@ func toAppProduct(prd models.Product) Product {
 	}
 }
 
-func toAppProducts(prds []models.Product) []Product {
+func toAppProducts(prds []productmodels.Product) []Product {
 	app := make([]Product, len(prds))
 	for i, prd := range prds {
 		app[i] = toAppProduct(prd)
@@ -66,7 +67,7 @@ func (app *NewProduct) Decode(data []byte) error {
 	return json.Unmarshal(data, app)
 }
 
-func toBusNewProduct(ctx context.Context, app NewProduct) (models.NewProduct, error) {
+func toBusNewProduct(ctx context.Context, app NewProduct) (productmodels.NewProduct, error) {
 	var errors errs.FieldErrors
 
 	userID, err := mid.GetUserID(ctx)
@@ -90,10 +91,10 @@ func toBusNewProduct(ctx context.Context, app NewProduct) (models.NewProduct, er
 	}
 
 	if len(errors) > 0 {
-		return models.NewProduct{}, fmt.Errorf("validate: %w", errors.ToError())
+		return productmodels.NewProduct{}, fmt.Errorf("validate: %w", errors.ToError())
 	}
 
-	bus := models.NewProduct{
+	bus := productmodels.NewProduct{
 		UserID:   userID,
 		Name:     name,
 		Cost:     cost,
@@ -117,7 +118,7 @@ func (app *UpdateProduct) Decode(data []byte) error {
 	return json.Unmarshal(data, app)
 }
 
-func toBusUpdateProduct(app UpdateProduct) (models.UpdateProduct, error) {
+func toBusUpdateProduct(app UpdateProduct) (productmodels.UpdateProduct, error) {
 	var errors errs.FieldErrors
 
 	var nme *name.Name
@@ -148,10 +149,10 @@ func toBusUpdateProduct(app UpdateProduct) (models.UpdateProduct, error) {
 	}
 
 	if len(errors) > 0 {
-		return models.UpdateProduct{}, fmt.Errorf("validate: %w", errors.ToError())
+		return productmodels.UpdateProduct{}, fmt.Errorf("validate: %w", errors.ToError())
 	}
 
-	bus := models.UpdateProduct{
+	bus := productmodels.UpdateProduct{
 		Name:     nme,
 		Cost:     cost,
 		Quantity: qnt,

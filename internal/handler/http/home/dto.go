@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"time"
 
+	homemodels "github.com/ardanlabs/service/internal/home/models"
+
 	errs "github.com/ardanlabs/service/internal/errors"
 	"github.com/ardanlabs/service/internal/handler/http/mid"
-	"github.com/ardanlabs/service/internal/models"
-	"github.com/ardanlabs/service/internal/models/types/home"
+	"github.com/ardanlabs/service/internal/types/home"
 )
 
 // Address represents information about an individual address.
@@ -38,7 +39,7 @@ func (app Home) Encode() ([]byte, string, error) {
 	return data, "application/json", err
 }
 
-func toAppHome(hme models.Home) Home {
+func toAppHome(hme homemodels.Home) Home {
 	return Home{
 		ID:     hme.ID.String(),
 		UserID: hme.UserID.String(),
@@ -56,7 +57,7 @@ func toAppHome(hme models.Home) Home {
 	}
 }
 
-func toAppHomes(homes []models.Home) []Home {
+func toAppHomes(homes []homemodels.Home) []Home {
 	app := make([]Home, len(homes))
 	for i, hme := range homes {
 		app[i] = toAppHome(hme)
@@ -88,10 +89,10 @@ func (app *NewHome) Decode(data []byte) error {
 	return json.Unmarshal(data, app)
 }
 
-func toBusNewHome(ctx context.Context, app NewHome) (models.NewHome, error) {
+func toBusNewHome(ctx context.Context, app NewHome) (homemodels.NewHome, error) {
 	userID, err := mid.GetUserID(ctx)
 	if err != nil {
-		return models.NewHome{}, fmt.Errorf("getuserid: %w", err)
+		return homemodels.NewHome{}, fmt.Errorf("getuserid: %w", err)
 	}
 
 	var errors errs.FieldErrors
@@ -102,13 +103,13 @@ func toBusNewHome(ctx context.Context, app NewHome) (models.NewHome, error) {
 	}
 
 	if len(errors) > 0 {
-		return models.NewHome{}, fmt.Errorf("validate: %w", errors.ToError())
+		return homemodels.NewHome{}, fmt.Errorf("validate: %w", errors.ToError())
 	}
 
-	bus := models.NewHome{
+	bus := homemodels.NewHome{
 		UserID: userID,
 		Type:   typ,
-		Address: models.Address{
+		Address: homemodels.Address{
 			Address1: app.Address.Address1,
 			Address2: app.Address.Address2,
 			ZipCode:  app.Address.ZipCode,
@@ -144,7 +145,7 @@ func (app *UpdateHome) Decode(data []byte) error {
 	return json.Unmarshal(data, app)
 }
 
-func toBusUpdateHome(app UpdateHome) (models.UpdateHome, error) {
+func toBusUpdateHome(app UpdateHome) (homemodels.UpdateHome, error) {
 	var errors errs.FieldErrors
 
 	var t home.Home
@@ -157,15 +158,15 @@ func toBusUpdateHome(app UpdateHome) (models.UpdateHome, error) {
 	}
 
 	if len(errors) > 0 {
-		return models.UpdateHome{}, fmt.Errorf("validate: %w", errors.ToError())
+		return homemodels.UpdateHome{}, fmt.Errorf("validate: %w", errors.ToError())
 	}
 
-	bus := models.UpdateHome{
+	bus := homemodels.UpdateHome{
 		Type: &t,
 	}
 
 	if app.Address != nil {
-		bus.Address = &models.UpdateAddress{
+		bus.Address = &homemodels.UpdateAddress{
 			Address1: app.Address.Address1,
 			Address2: app.Address.Address2,
 			ZipCode:  app.Address.ZipCode,

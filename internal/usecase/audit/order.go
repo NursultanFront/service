@@ -1,7 +1,7 @@
 package audit
 
 import (
-	"github.com/ardanlabs/service/internal/models"
+	auditmodels "github.com/ardanlabs/service/internal/audit/models"
 	"github.com/ardanlabs/service/internal/sys/order"
 )
 
@@ -10,11 +10,11 @@ var DefaultOrderBy = order.NewBy(OrderByObjID, order.ASC)
 
 // Set of fields that the results can be ordered by.
 //
-// NOTE(AI): aliases of the models.AuditOrderBy* constants (migration step (b2)).
+// NOTE(AI): aliases of the auditmodels.OrderBy* constants (migration step (b2)).
 const (
-	OrderByObjID     = models.AuditOrderByObjID
-	OrderByObjDomain = models.AuditOrderByObjDomain
-	OrderByObjName   = models.AuditOrderByObjName
-	OrderByActorID   = models.AuditOrderByActorID
-	OrderByAction    = models.AuditOrderByAction
+	OrderByObjID     = auditmodels.OrderByObjID
+	OrderByObjDomain = auditmodels.OrderByObjDomain
+	OrderByObjName   = auditmodels.OrderByObjName
+	OrderByActorID   = auditmodels.OrderByActorID
+	OrderByAction    = auditmodels.OrderByAction
 )

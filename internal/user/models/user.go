@@ -1,14 +1,14 @@
-// Package models holds the core business entities shared across the
-// handler, usecase, and repository layers.
+// Package models holds the user domain entities, query filter, and order-by
+// fields shared by its usecase and repository layers.
 package models
 
 import (
 	"net/mail"
 	"time"
 
-	"github.com/ardanlabs/service/internal/models/types/name"
-	"github.com/ardanlabs/service/internal/models/types/password"
-	"github.com/ardanlabs/service/internal/models/types/role"
+	"github.com/ardanlabs/service/internal/types/name"
+	"github.com/ardanlabs/service/internal/types/password"
+	"github.com/ardanlabs/service/internal/types/role"
 	"github.com/google/uuid"
 )
 

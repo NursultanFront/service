@@ -8,7 +8,8 @@ import (
 	"fmt"
 	"net/mail"
 
-	"github.com/ardanlabs/service/internal/models"
+	usermodels "github.com/ardanlabs/service/internal/user/models"
+
 	sqldb "github.com/ardanlabs/service/internal/sys/db"
 	"github.com/ardanlabs/service/internal/sys/order"
 	"github.com/ardanlabs/service/internal/sys/page"
@@ -33,7 +34,7 @@ func NewStore(log *logger.Logger, db *sqlx.DB) *Store {
 
 // NewWithTx constructs a new Store value replacing the sqlx DB
 // value with a sqlx DB value that is currently inside a transaction.
-func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (models.UserStorer, error) {
+func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (usermodels.Storer, error) {
 	ec, err := sqldb.GetExtContext(tx)
 	if err != nil {
 		return nil, err
@@ -48,7 +49,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (models.UserStorer, error) 
 }
 
 // Create inserts a new user into the database.
-func (s *Store) Create(ctx context.Context, usr models.User) error {
+func (s *Store) Create(ctx context.Context, usr usermodels.User) error {
 	const q = `
 	INSERT INTO users
 		(user_id, name, email, password_hash, roles, department, enabled, date_created, date_updated)
@@ -57,7 +58,7 @@ func (s *Store) Create(ctx context.Context, usr models.User) error {
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBUser(usr)); err != nil {
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
-			return fmt.Errorf("namedexeccontext: %w", models.ErrUserUniqueEmail)
+			return fmt.Errorf("namedexeccontext: %w", usermodels.ErrUniqueEmail)
 		}
 		return fmt.Errorf("namedexeccontext: %w", err)
 	}
@@ -66,7 +67,7 @@ func (s *Store) Create(ctx context.Context, usr models.User) error {
 }
 
 // Update replaces a user document in the database.
-func (s *Store) Update(ctx context.Context, usr models.User) error {
+func (s *Store) Update(ctx context.Context, usr usermodels.User) error {
 	const q = `
 	UPDATE
 		users
@@ -83,7 +84,7 @@ func (s *Store) Update(ctx context.Context, usr models.User) error {
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, toDBUser(usr)); err != nil {
 		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
-			return models.ErrUserUniqueEmail
+			return usermodels.ErrUniqueEmail
 		}
 		return fmt.Errorf("namedexeccontext: %w", err)
 	}
@@ -92,7 +93,7 @@ func (s *Store) Update(ctx context.Context, usr models.User) error {
 }
 
 // Delete removes a user from the database.
-func (s *Store) Delete(ctx context.Context, usr models.User) error {
+func (s *Store) Delete(ctx context.Context, usr usermodels.User) error {
 	const q = `
 	DELETE FROM
 		users
@@ -107,7 +108,7 @@ func (s *Store) Delete(ctx context.Context, usr models.User) error {
 }
 
 // Query retrieves a list of existing users from the database.
-func (s *Store) Query(ctx context.Context, filter models.UserQueryFilter, orderBy order.By, page page.Page) ([]models.User, error) {
+func (s *Store) Query(ctx context.Context, filter usermodels.QueryFilter, orderBy order.By, page page.Page) ([]usermodels.User, error) {
 	data := map[string]any{
 		"offset":        (page.Number() - 1) * page.RowsPerPage(),
 		"rows_per_page": page.RowsPerPage(),
@@ -139,7 +140,7 @@ func (s *Store) Query(ctx context.Context, filter models.UserQueryFilter, orderB
 }
 
 // Count returns the total number of users in the DB.
-func (s *Store) Count(ctx context.Context, filter models.UserQueryFilter) (int, error) {
+func (s *Store) Count(ctx context.Context, filter usermodels.QueryFilter) (int, error) {
 	data := map[string]any{}
 
 	const q = `
@@ -162,7 +163,7 @@ func (s *Store) Count(ctx context.Context, filter models.UserQueryFilter) (int, 
 }
 
 // QueryByID gets the specified user from the database.
-func (s *Store) QueryByID(ctx context.Context, userID uuid.UUID) (models.User, error) {
+func (s *Store) QueryByID(ctx context.Context, userID uuid.UUID) (usermodels.User, error) {
 	data := struct {
 		ID string `db:"user_id"`
 	}{
@@ -180,16 +181,16 @@ func (s *Store) QueryByID(ctx context.Context, userID uuid.UUID) (models.User, e
 	var dbUsr userDB
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbUsr); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
-			return models.User{}, fmt.Errorf("db: %w", models.ErrUserNotFound)
+			return usermodels.User{}, fmt.Errorf("db: %w", usermodels.ErrNotFound)
 		}
-		return models.User{}, fmt.Errorf("db: %w", err)
+		return usermodels.User{}, fmt.Errorf("db: %w", err)
 	}
 
 	return toBusUser(dbUsr)
 }
 
 // QueryByEmail gets the specified user from the database by email.
-func (s *Store) QueryByEmail(ctx context.Context, email mail.Address) (models.User, error) {
+func (s *Store) QueryByEmail(ctx context.Context, email mail.Address) (usermodels.User, error) {
 	data := struct {
 		Email string `db:"email"`
 	}{
@@ -207,9 +208,9 @@ func (s *Store) QueryByEmail(ctx context.Context, email mail.Address) (models.Us
 	var dbUsr userDB
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbUsr); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
-			return models.User{}, fmt.Errorf("db: %w", models.ErrUserNotFound)
+			return usermodels.User{}, fmt.Errorf("db: %w", usermodels.ErrNotFound)
 		}
-		return models.User{}, fmt.Errorf("db: %w", err)
+		return usermodels.User{}, fmt.Errorf("db: %w", err)
 	}
 
 	return toBusUser(dbUsr)

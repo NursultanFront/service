@@ -7,7 +7,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ardanlabs/service/internal/models"
+	homemodels "github.com/ardanlabs/service/internal/home/models"
+
 	sqldb "github.com/ardanlabs/service/internal/sys/db"
 	"github.com/ardanlabs/service/internal/sys/order"
 	"github.com/ardanlabs/service/internal/sys/page"
@@ -32,7 +33,7 @@ func NewStore(log *logger.Logger, db *sqlx.DB) *Store {
 
 // NewWithTx constructs a new Store value replacing the sqlx DB
 // value with a sqlx DB value that is currently inside a transaction.
-func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (models.HomeStorer, error) {
+func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (homemodels.Storer, error) {
 	ec, err := sqldb.GetExtContext(tx)
 	if err != nil {
 		return nil, err
@@ -47,7 +48,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (models.HomeStorer, error) 
 }
 
 // Create inserts a new home into the database.
-func (s *Store) Create(ctx context.Context, hme models.Home) error {
+func (s *Store) Create(ctx context.Context, hme homemodels.Home) error {
 	const q = `
     INSERT INTO homes
         (home_id, user_id, type, address_1, address_2, zip_code, city, state, country, date_created, date_updated)
@@ -62,7 +63,7 @@ func (s *Store) Create(ctx context.Context, hme models.Home) error {
 }
 
 // Delete removes a home from the database.
-func (s *Store) Delete(ctx context.Context, hme models.Home) error {
+func (s *Store) Delete(ctx context.Context, hme homemodels.Home) error {
 	data := struct {
 		ID string `db:"home_id"`
 	}{
@@ -83,7 +84,7 @@ func (s *Store) Delete(ctx context.Context, hme models.Home) error {
 }
 
 // Update replaces a home document in the database.
-func (s *Store) Update(ctx context.Context, hme models.Home) error {
+func (s *Store) Update(ctx context.Context, hme homemodels.Home) error {
 	const q = `
     UPDATE
         homes
@@ -107,7 +108,7 @@ func (s *Store) Update(ctx context.Context, hme models.Home) error {
 }
 
 // Query retrieves a list of existing homes from the database.
-func (s *Store) Query(ctx context.Context, filter models.HomeQueryFilter, orderBy order.By, page page.Page) ([]models.Home, error) {
+func (s *Store) Query(ctx context.Context, filter homemodels.QueryFilter, orderBy order.By, page page.Page) ([]homemodels.Home, error) {
 	data := map[string]any{
 		"offset":        (page.Number() - 1) * page.RowsPerPage(),
 		"rows_per_page": page.RowsPerPage(),
@@ -144,7 +145,7 @@ func (s *Store) Query(ctx context.Context, filter models.HomeQueryFilter, orderB
 }
 
 // Count returns the total number of homes in the DB.
-func (s *Store) Count(ctx context.Context, filter models.HomeQueryFilter) (int, error) {
+func (s *Store) Count(ctx context.Context, filter homemodels.QueryFilter) (int, error) {
 	data := map[string]any{}
 
 	const q = `
@@ -167,7 +168,7 @@ func (s *Store) Count(ctx context.Context, filter models.HomeQueryFilter) (int, 
 }
 
 // QueryByID gets the specified home from the database.
-func (s *Store) QueryByID(ctx context.Context, homeID uuid.UUID) (models.Home, error) {
+func (s *Store) QueryByID(ctx context.Context, homeID uuid.UUID) (homemodels.Home, error) {
 	data := struct {
 		ID string `db:"home_id"`
 	}{
@@ -185,16 +186,16 @@ func (s *Store) QueryByID(ctx context.Context, homeID uuid.UUID) (models.Home, e
 	var dbHme homeDB
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbHme); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
-			return models.Home{}, fmt.Errorf("db: %w", models.ErrHomeNotFound)
+			return homemodels.Home{}, fmt.Errorf("db: %w", homemodels.ErrNotFound)
 		}
-		return models.Home{}, fmt.Errorf("db: %w", err)
+		return homemodels.Home{}, fmt.Errorf("db: %w", err)
 	}
 
 	return toBusHome(dbHme)
 }
 
 // QueryByUserID gets the specified home from the database by user id.
-func (s *Store) QueryByUserID(ctx context.Context, userID uuid.UUID) ([]models.Home, error) {
+func (s *Store) QueryByUserID(ctx context.Context, userID uuid.UUID) ([]homemodels.Home, error) {
 	data := struct {
 		ID string `db:"user_id"`
 	}{

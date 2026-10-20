@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"strings"
 
-	"github.com/ardanlabs/service/internal/models"
+	homemodels "github.com/ardanlabs/service/internal/home/models"
 )
 
-func (s *Store) applyFilter(filter models.HomeQueryFilter, data map[string]any, buf *bytes.Buffer) {
+func (s *Store) applyFilter(filter homemodels.QueryFilter, data map[string]any, buf *bytes.Buffer) {
 	var wc []string
 
 	if filter.ID != nil {

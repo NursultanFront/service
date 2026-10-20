@@ -1,8 +1,10 @@
 package vproduct
 
-import "github.com/ardanlabs/service/internal/models"
+import (
+	vproductmodels "github.com/ardanlabs/service/internal/vproduct/models"
+)
 
 // QueryFilter holds the available fields a query can be filtered on.
 //
-// NOTE(AI): alias of models.VProductQueryFilter (migration step (b2)).
-type QueryFilter = models.VProductQueryFilter
+// NOTE(AI): alias of vproductmodels.QueryFilter (migration step (b2)).
+type QueryFilter = vproductmodels.QueryFilter

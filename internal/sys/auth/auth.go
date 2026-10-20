@@ -9,7 +9,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ardanlabs/service/internal/models"
+	usermodels "github.com/ardanlabs/service/internal/user/models"
+
 	"github.com/ardanlabs/service/pkg/foundation/logger"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -45,7 +46,7 @@ type KeyLookup interface {
 //
 // NOTE(AI): added by Claude by direct request (migration plan Q16).
 type UserLookup interface {
-	QueryByID(ctx context.Context, userID uuid.UUID) (models.User, error)
+	QueryByID(ctx context.Context, userID uuid.UUID) (usermodels.User, error)
 }
 
 // Config represents information required to initialize auth.

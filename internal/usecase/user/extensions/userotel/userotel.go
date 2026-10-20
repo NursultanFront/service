@@ -6,7 +6,8 @@ import (
 	"context"
 	"net/mail"
 
-	"github.com/ardanlabs/service/internal/models"
+	usermodels "github.com/ardanlabs/service/internal/user/models"
+
 	sqldb "github.com/ardanlabs/service/internal/sys/db"
 	"github.com/ardanlabs/service/internal/sys/order"
 	"github.com/ardanlabs/service/internal/sys/page"
@@ -35,33 +36,33 @@ func (ext *Extension) NewWithTx(tx sqldb.CommitRollbacker) (userbus.ExtBusiness,
 }
 
 // Create applies otel to the user creation process.
-func (ext *Extension) Create(ctx context.Context, actorID uuid.UUID, nu models.NewUser) (models.User, error) {
+func (ext *Extension) Create(ctx context.Context, actorID uuid.UUID, nu usermodels.NewUser) (usermodels.User, error) {
 	ctx, span := otel.AddSpan(ctx, "business.userbus.create")
 	defer span.End()
 
 	usr, err := ext.bus.Create(ctx, actorID, nu)
 	if err != nil {
-		return models.User{}, err
+		return usermodels.User{}, err
 	}
 
 	return usr, nil
 }
 
 // Update applies otel to the user update process.
-func (ext *Extension) Update(ctx context.Context, actorID uuid.UUID, usr models.User, uu models.UpdateUser) (models.User, error) {
+func (ext *Extension) Update(ctx context.Context, actorID uuid.UUID, usr usermodels.User, uu usermodels.UpdateUser) (usermodels.User, error) {
 	ctx, span := otel.AddSpan(ctx, "business.userbus.update")
 	defer span.End()
 
 	usr, err := ext.bus.Update(ctx, actorID, usr, uu)
 	if err != nil {
-		return models.User{}, err
+		return usermodels.User{}, err
 	}
 
 	return usr, nil
 }
 
 // Delete applies otel to the user deletion process.
-func (ext *Extension) Delete(ctx context.Context, actorID uuid.UUID, usr models.User) error {
+func (ext *Extension) Delete(ctx context.Context, actorID uuid.UUID, usr usermodels.User) error {
 	ctx, span := otel.AddSpan(ctx, "business.userbus.delete")
 	defer span.End()
 
@@ -73,7 +74,7 @@ func (ext *Extension) Delete(ctx context.Context, actorID uuid.UUID, usr models.
 }
 
 // Query applies otel to the user query process.
-func (ext *Extension) Query(ctx context.Context, filter userbus.QueryFilter, orderBy order.By, page page.Page) ([]models.User, error) {
+func (ext *Extension) Query(ctx context.Context, filter userbus.QueryFilter, orderBy order.By, page page.Page) ([]usermodels.User, error) {
 	ctx, span := otel.AddSpan(ctx, "business.userbus.query")
 	defer span.End()
 
@@ -89,7 +90,7 @@ func (ext *Extension) Count(ctx context.Context, filter userbus.QueryFilter) (in
 }
 
 // QueryByID applies otel to the user query by ID process.
-func (ext *Extension) QueryByID(ctx context.Context, userID uuid.UUID) (models.User, error) {
+func (ext *Extension) QueryByID(ctx context.Context, userID uuid.UUID) (usermodels.User, error) {
 	ctx, span := otel.AddSpan(ctx, "business.userbus.querybyid")
 	defer span.End()
 
@@ -97,7 +98,7 @@ func (ext *Extension) QueryByID(ctx context.Context, userID uuid.UUID) (models.U
 }
 
 // QueryByEmail applies otel to the user query by email process.
-func (ext *Extension) QueryByEmail(ctx context.Context, email mail.Address) (models.User, error) {
+func (ext *Extension) QueryByEmail(ctx context.Context, email mail.Address) (usermodels.User, error) {
 	ctx, span := otel.AddSpan(ctx, "business.userbus.querybyemail")
 	defer span.End()
 
@@ -105,7 +106,7 @@ func (ext *Extension) QueryByEmail(ctx context.Context, email mail.Address) (mod
 }
 
 // Authenticate applies otel to the user authentication process.
-func (ext *Extension) Authenticate(ctx context.Context, email mail.Address, password string) (models.User, error) {
+func (ext *Extension) Authenticate(ctx context.Context, email mail.Address, password string) (usermodels.User, error) {
 	ctx, span := otel.AddSpan(ctx, "business.userbus.authenticate")
 	defer span.End()
 

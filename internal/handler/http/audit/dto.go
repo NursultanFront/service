@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/ardanlabs/service/internal/models"
+	auditmodels "github.com/ardanlabs/service/internal/audit/models"
 )
 
 // Audit represents information about an individual audit record.
@@ -26,7 +26,7 @@ func (app Audit) Encode() ([]byte, string, error) {
 	return data, "application/json", err
 }
 
-func toAppAudit(bus models.Audit) Audit {
+func toAppAudit(bus auditmodels.Audit) Audit {
 	return Audit{
 		ID:        bus.ID.String(),
 		ObjID:     bus.ObjID.String(),
@@ -40,7 +40,7 @@ func toAppAudit(bus models.Audit) Audit {
 	}
 }
 
-func toAppAudits(audits []models.Audit) []Audit {
+func toAppAudits(audits []auditmodels.Audit) []Audit {
 	app := make([]Audit, len(audits))
 	for i, adt := range audits {
 		app[i] = toAppAudit(adt)

@@ -1,10 +1,10 @@
 package dbtest
 
 import (
-	"github.com/ardanlabs/service/internal/models/types/money"
-	"github.com/ardanlabs/service/internal/models/types/name"
-	"github.com/ardanlabs/service/internal/models/types/password"
-	"github.com/ardanlabs/service/internal/models/types/quantity"
+	"github.com/ardanlabs/service/internal/types/money"
+	"github.com/ardanlabs/service/internal/types/name"
+	"github.com/ardanlabs/service/internal/types/password"
+	"github.com/ardanlabs/service/internal/types/quantity"
 )
 
 // StringPointer is a helper to get a *string from a string. It is in the tests

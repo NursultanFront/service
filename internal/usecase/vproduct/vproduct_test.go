@@ -7,11 +7,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ardanlabs/service/internal/models"
-	"github.com/ardanlabs/service/internal/models/types/role"
+	productmodels "github.com/ardanlabs/service/internal/product/models"
+	usermodels "github.com/ardanlabs/service/internal/user/models"
+	vproductmodels "github.com/ardanlabs/service/internal/vproduct/models"
+
 	"github.com/ardanlabs/service/internal/sys/dbtest"
 	"github.com/ardanlabs/service/internal/sys/page"
 	"github.com/ardanlabs/service/internal/sys/unittest"
+	"github.com/ardanlabs/service/internal/types/role"
 	productbus "github.com/ardanlabs/service/internal/usecase/product"
 	userbus "github.com/ardanlabs/service/internal/usecase/user"
 	vproductbus "github.com/ardanlabs/service/internal/usecase/vproduct"
@@ -82,8 +85,8 @@ func insertSeedData(busDomain dbtest.BusDomain) (unittest.SeedData, error) {
 
 // =============================================================================
 
-func toVProduct(usr models.User, prd models.Product) models.VProduct {
-	return models.VProduct{
+func toVProduct(usr usermodels.User, prd productmodels.Product) vproductmodels.Product {
+	return vproductmodels.Product{
 		ID:          prd.ID,
 		UserID:      prd.UserID,
 		Name:        prd.Name,
@@ -95,8 +98,8 @@ func toVProduct(usr models.User, prd models.Product) models.VProduct {
 	}
 }
 
-func toVProducts(usr models.User, prds []models.Product) []models.VProduct {
-	items := make([]models.VProduct, len(prds))
+func toVProducts(usr usermodels.User, prds []productmodels.Product) []vproductmodels.Product {
+	items := make([]vproductmodels.Product, len(prds))
 	for i, prd := range prds {
 		items[i] = toVProduct(usr, prd)
 	}
@@ -131,12 +134,12 @@ func query(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				return resp
 			},
 			CmpFunc: func(got any, exp any) string {
-				gotResp, exists := got.([]models.VProduct)
+				gotResp, exists := got.([]vproductmodels.Product)
 				if !exists {
 					return "error occurred"
 				}
 
-				expResp := exp.([]models.VProduct)
+				expResp := exp.([]vproductmodels.Product)
 
 				for i := range gotResp {
 					if gotResp[i].DateCreated.Format(time.RFC3339) == expResp[i].DateCreated.Format(time.RFC3339) {

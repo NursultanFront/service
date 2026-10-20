@@ -1,11 +1,13 @@
+// Package models holds the product domain entities, query filter, and order-by
+// fields shared by its usecase and repository layers.
 package models
 
 import (
 	"time"
 
-	"github.com/ardanlabs/service/internal/models/types/money"
-	"github.com/ardanlabs/service/internal/models/types/name"
-	"github.com/ardanlabs/service/internal/models/types/quantity"
+	"github.com/ardanlabs/service/internal/types/money"
+	"github.com/ardanlabs/service/internal/types/name"
+	"github.com/ardanlabs/service/internal/types/quantity"
 	"github.com/google/uuid"
 )
 

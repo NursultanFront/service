@@ -10,7 +10,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ardanlabs/service/internal/models"
+	productmodels "github.com/ardanlabs/service/internal/product/models"
+
 	commondb "github.com/ardanlabs/service/internal/repository/product/common"
 	sqldb "github.com/ardanlabs/service/internal/sys/db"
 	"github.com/ardanlabs/service/internal/sys/db/dialect"
@@ -39,7 +40,7 @@ func NewStore(log *logger.Logger, db *sqlx.DB) *Store {
 
 // NewWithTx constructs a new Store value replacing the sqlx DB value with
 // a sqlx DB value that is currently inside a transaction.
-func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (models.ProductStorer, error) {
+func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (productmodels.Storer, error) {
 	ec, err := sqldb.GetExtContext(tx)
 	if err != nil {
 		return nil, err
@@ -55,7 +56,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (models.ProductStorer, erro
 }
 
 // Create adds a Product to the database.
-func (s *Store) Create(ctx context.Context, prd models.Product) error {
+func (s *Store) Create(ctx context.Context, prd productmodels.Product) error {
 	const q = `
 	INSERT INTO products
 		(product_id, user_id, name, cost, quantity, date_created, date_updated)
@@ -71,7 +72,7 @@ func (s *Store) Create(ctx context.Context, prd models.Product) error {
 
 // Update modifies data about a productbus. It will error if the specified
 // ID is invalid or does not reference an existing product.
-func (s *Store) Update(ctx context.Context, prd models.Product) error {
+func (s *Store) Update(ctx context.Context, prd productmodels.Product) error {
 	const q = `
 	UPDATE
 		products
@@ -91,7 +92,7 @@ func (s *Store) Update(ctx context.Context, prd models.Product) error {
 }
 
 // Delete removes the product identified by a given ID.
-func (s *Store) Delete(ctx context.Context, prd models.Product) error {
+func (s *Store) Delete(ctx context.Context, prd productmodels.Product) error {
 	data := struct {
 		ID string `db:"product_id"`
 	}{
@@ -112,7 +113,7 @@ func (s *Store) Delete(ctx context.Context, prd models.Product) error {
 }
 
 // Query gets all Products from the database matching the filter.
-func (s *Store) Query(ctx context.Context, filter models.ProductQueryFilter, orderBy order.By, pg page.Page) ([]models.Product, error) {
+func (s *Store) Query(ctx context.Context, filter productmodels.QueryFilter, orderBy order.By, pg page.Page) ([]productmodels.Product, error) {
 	data := map[string]any{
 		"offset":        (pg.Number() - 1) * pg.RowsPerPage(),
 		"rows_per_page": pg.RowsPerPage(),
@@ -144,7 +145,7 @@ func (s *Store) Query(ctx context.Context, filter models.ProductQueryFilter, ord
 }
 
 // Count returns the total number of products in the DB matching the filter.
-func (s *Store) Count(ctx context.Context, filter models.ProductQueryFilter) (int, error) {
+func (s *Store) Count(ctx context.Context, filter productmodels.QueryFilter) (int, error) {
 	data := map[string]any{}
 
 	const q = `
@@ -167,7 +168,7 @@ func (s *Store) Count(ctx context.Context, filter models.ProductQueryFilter) (in
 }
 
 // QueryByID finds the product identified by a given ID.
-func (s *Store) QueryByID(ctx context.Context, productID uuid.UUID) (models.Product, error) {
+func (s *Store) QueryByID(ctx context.Context, productID uuid.UUID) (productmodels.Product, error) {
 	data := struct {
 		ID string `db:"product_id"`
 	}{
@@ -185,16 +186,16 @@ func (s *Store) QueryByID(ctx context.Context, productID uuid.UUID) (models.Prod
 	var dbPrd commondb.ProductDB
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &dbPrd); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
-			return models.Product{}, fmt.Errorf("db: %w", models.ErrProductNotFound)
+			return productmodels.Product{}, fmt.Errorf("db: %w", productmodels.ErrNotFound)
 		}
-		return models.Product{}, fmt.Errorf("db: %w", err)
+		return productmodels.Product{}, fmt.Errorf("db: %w", err)
 	}
 
 	return commondb.ToBusProduct(dbPrd)
 }
 
 // QueryByUserID finds products by their owning user ID.
-func (s *Store) QueryByUserID(ctx context.Context, userID uuid.UUID) ([]models.Product, error) {
+func (s *Store) QueryByUserID(ctx context.Context, userID uuid.UUID) ([]productmodels.Product, error) {
 	data := struct {
 		ID string `db:"user_id"`
 	}{

@@ -6,12 +6,13 @@ import (
 	"net/mail"
 	"time"
 
-	"github.com/ardanlabs/service/internal/models"
-	"github.com/ardanlabs/service/internal/models/types/name"
-	"github.com/ardanlabs/service/internal/models/types/password"
-	"github.com/ardanlabs/service/internal/models/types/role"
+	usermodels "github.com/ardanlabs/service/internal/user/models"
+
 	userdb "github.com/ardanlabs/service/internal/repository/user"
 	sqldb "github.com/ardanlabs/service/internal/sys/db"
+	"github.com/ardanlabs/service/internal/types/name"
+	"github.com/ardanlabs/service/internal/types/password"
+	"github.com/ardanlabs/service/internal/types/role"
 	userbus "github.com/ardanlabs/service/internal/usecase/user"
 	"github.com/ardanlabs/service/pkg/foundation/logger"
 	"github.com/google/uuid"
@@ -40,7 +41,7 @@ func UserAdd(log *logger.Logger, cfg sqldb.Config, nme string, email string, pas
 		return fmt.Errorf("parsing email: %w", err)
 	}
 
-	nu := models.NewUser{
+	nu := usermodels.NewUser{
 		Name:     name.MustParse(nme),
 		Email:    *addr,
 		Password: password.MustParse(pass),

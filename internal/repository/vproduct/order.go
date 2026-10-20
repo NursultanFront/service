@@ -3,17 +3,18 @@ package vproduct
 import (
 	"fmt"
 
-	"github.com/ardanlabs/service/internal/models"
+	vproductmodels "github.com/ardanlabs/service/internal/vproduct/models"
+
 	"github.com/ardanlabs/service/internal/sys/order"
 )
 
 var orderByFields = map[string]string{
-	models.VProductOrderByProductID: "product_id",
-	models.VProductOrderByUserID:    "user_id",
-	models.VProductOrderByName:      "name",
-	models.VProductOrderByCost:      "cost",
-	models.VProductOrderByQuantity:  "quantity",
-	models.VProductOrderByUserName:  "user_name",
+	vproductmodels.OrderByProductID: "product_id",
+	vproductmodels.OrderByUserID:    "user_id",
+	vproductmodels.OrderByName:      "name",
+	vproductmodels.OrderByCost:      "cost",
+	vproductmodels.OrderByQuantity:  "quantity",
+	vproductmodels.OrderByUserName:  "user_name",
 }
 
 func orderByClause(orderBy order.By) (string, error) {

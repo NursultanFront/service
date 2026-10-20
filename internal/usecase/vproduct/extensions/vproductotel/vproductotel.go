@@ -5,7 +5,8 @@ package vproductotel
 import (
 	"context"
 
-	"github.com/ardanlabs/service/internal/models"
+	vproductmodels "github.com/ardanlabs/service/internal/vproduct/models"
+
 	"github.com/ardanlabs/service/internal/sys/order"
 	"github.com/ardanlabs/service/internal/sys/page"
 	vproductbus "github.com/ardanlabs/service/internal/usecase/vproduct"
@@ -26,7 +27,7 @@ func NewExtension() vproductbus.Extension {
 	}
 }
 
-func (ext *Extension) Query(ctx context.Context, filter vproductbus.QueryFilter, orderBy order.By, page page.Page) ([]models.VProduct, error) {
+func (ext *Extension) Query(ctx context.Context, filter vproductbus.QueryFilter, orderBy order.By, page page.Page) ([]vproductmodels.Product, error) {
 	ctx, span := otel.AddSpan(ctx, "business.vproductbus.query")
 	defer span.End()
 

@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ardanlabs/service/internal/models/types/role"
 	"github.com/ardanlabs/service/internal/sys/auth"
 	"github.com/ardanlabs/service/internal/sys/dbtest"
+	"github.com/ardanlabs/service/internal/types/role"
 	userbus "github.com/ardanlabs/service/internal/usecase/user"
 	"github.com/golang-jwt/jwt/v5"
 )

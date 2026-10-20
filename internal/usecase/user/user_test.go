@@ -8,13 +8,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ardanlabs/service/internal/models"
-	"github.com/ardanlabs/service/internal/models/types/name"
-	"github.com/ardanlabs/service/internal/models/types/password"
-	"github.com/ardanlabs/service/internal/models/types/role"
+	usermodels "github.com/ardanlabs/service/internal/user/models"
+
 	"github.com/ardanlabs/service/internal/sys/dbtest"
 	"github.com/ardanlabs/service/internal/sys/page"
 	"github.com/ardanlabs/service/internal/sys/unittest"
+	"github.com/ardanlabs/service/internal/types/name"
+	"github.com/ardanlabs/service/internal/types/password"
+	"github.com/ardanlabs/service/internal/types/role"
 	userbus "github.com/ardanlabs/service/internal/usecase/user"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
@@ -85,7 +86,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (unittest.SeedData, error) {
 // =============================================================================
 
 func query(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
-	usrs := make([]models.User, 0, len(sd.Admins)+len(sd.Users))
+	usrs := make([]usermodels.User, 0, len(sd.Admins)+len(sd.Users))
 
 	for _, adm := range sd.Admins {
 		usrs = append(usrs, adm.User)
@@ -116,12 +117,12 @@ func query(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				return resp
 			},
 			CmpFunc: func(got any, exp any) string {
-				gotResp, exists := got.([]models.User)
+				gotResp, exists := got.([]usermodels.User)
 				if !exists {
 					return "error occurred"
 				}
 
-				expResp := exp.([]models.User)
+				expResp := exp.([]usermodels.User)
 
 				for i := range gotResp {
 					if gotResp[i].DateCreated.Format(time.RFC3339) == expResp[i].DateCreated.Format(time.RFC3339) {
@@ -148,12 +149,12 @@ func query(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				return resp
 			},
 			CmpFunc: func(got any, exp any) string {
-				gotResp, exists := got.(models.User)
+				gotResp, exists := got.(usermodels.User)
 				if !exists {
 					return "error occurred"
 				}
 
-				expResp := exp.(models.User)
+				expResp := exp.(usermodels.User)
 
 				if gotResp.DateCreated.Format(time.RFC3339) == expResp.DateCreated.Format(time.RFC3339) {
 					expResp.DateCreated = gotResp.DateCreated
@@ -177,7 +178,7 @@ func create(busDomain dbtest.BusDomain) []unittest.Table {
 	table := []unittest.Table{
 		{
 			Name: "basic",
-			ExpResp: models.User{
+			ExpResp: usermodels.User{
 				Name:       name.MustParse("Bill Kennedy"),
 				Email:      *email,
 				Roles:      []role.Role{role.Admin},
@@ -185,7 +186,7 @@ func create(busDomain dbtest.BusDomain) []unittest.Table {
 				Enabled:    true,
 			},
 			ExcFunc: func(ctx context.Context) any {
-				nu := models.NewUser{
+				nu := usermodels.NewUser{
 					Name:       name.MustParse("Bill Kennedy"),
 					Email:      *email,
 					Roles:      []role.Role{role.Admin},
@@ -201,7 +202,7 @@ func create(busDomain dbtest.BusDomain) []unittest.Table {
 				return resp
 			},
 			CmpFunc: func(got any, exp any) string {
-				gotResp, exists := got.(models.User)
+				gotResp, exists := got.(usermodels.User)
 				if !exists {
 					return "error occurred"
 				}
@@ -210,7 +211,7 @@ func create(busDomain dbtest.BusDomain) []unittest.Table {
 					return err.Error()
 				}
 
-				expResp := exp.(models.User)
+				expResp := exp.(usermodels.User)
 
 				expResp.ID = gotResp.ID
 				expResp.PasswordHash = gotResp.PasswordHash
@@ -231,7 +232,7 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 	table := []unittest.Table{
 		{
 			Name: "basic",
-			ExpResp: models.User{
+			ExpResp: usermodels.User{
 				ID:          sd.Users[0].ID,
 				Name:        name.MustParse("Jack Kennedy"),
 				Email:       *email,
@@ -241,7 +242,7 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				DateCreated: sd.Users[0].DateCreated,
 			},
 			ExcFunc: func(ctx context.Context) any {
-				uu := models.UpdateUser{
+				uu := usermodels.UpdateUser{
 					Name:       dbtest.NamePointer("Jack Kennedy"),
 					Email:      email,
 					Roles:      []role.Role{role.Admin},
@@ -257,7 +258,7 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				return resp
 			},
 			CmpFunc: func(got any, exp any) string {
-				gotResp, exists := got.(models.User)
+				gotResp, exists := got.(usermodels.User)
 				if !exists {
 					return "error occurred"
 				}
@@ -266,7 +267,7 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 					return err.Error()
 				}
 
-				expResp := exp.(models.User)
+				expResp := exp.(usermodels.User)
 
 				expResp.PasswordHash = gotResp.PasswordHash
 				expResp.DateUpdated = gotResp.DateUpdated

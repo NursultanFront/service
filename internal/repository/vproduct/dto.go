@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ardanlabs/service/internal/models"
-	"github.com/ardanlabs/service/internal/models/types/money"
-	"github.com/ardanlabs/service/internal/models/types/name"
-	"github.com/ardanlabs/service/internal/models/types/quantity"
+	vproductmodels "github.com/ardanlabs/service/internal/vproduct/models"
+
+	"github.com/ardanlabs/service/internal/types/money"
+	"github.com/ardanlabs/service/internal/types/name"
+	"github.com/ardanlabs/service/internal/types/quantity"
 	"github.com/google/uuid"
 )
 
@@ -22,28 +23,28 @@ type productDB struct {
 	UserName    string    `db:"user_name"`
 }
 
-func toBusProduct(db productDB) (models.VProduct, error) {
+func toBusProduct(db productDB) (vproductmodels.Product, error) {
 	userName, err := name.Parse(db.UserName)
 	if err != nil {
-		return models.VProduct{}, fmt.Errorf("parse user name: %w", err)
+		return vproductmodels.Product{}, fmt.Errorf("parse user name: %w", err)
 	}
 
 	name, err := name.Parse(db.Name)
 	if err != nil {
-		return models.VProduct{}, fmt.Errorf("parse name: %w", err)
+		return vproductmodels.Product{}, fmt.Errorf("parse name: %w", err)
 	}
 
 	cost, err := money.Parse(db.Cost)
 	if err != nil {
-		return models.VProduct{}, fmt.Errorf("parse cost: %w", err)
+		return vproductmodels.Product{}, fmt.Errorf("parse cost: %w", err)
 	}
 
 	quantity, err := quantity.Parse(db.Quantity)
 	if err != nil {
-		return models.VProduct{}, fmt.Errorf("parse quantity: %w", err)
+		return vproductmodels.Product{}, fmt.Errorf("parse quantity: %w", err)
 	}
 
-	bus := models.VProduct{
+	bus := vproductmodels.Product{
 		ID:          db.ID,
 		UserID:      db.UserID,
 		Name:        name,
@@ -57,8 +58,8 @@ func toBusProduct(db productDB) (models.VProduct, error) {
 	return bus, nil
 }
 
-func toBusProducts(dbPrds []productDB) ([]models.VProduct, error) {
-	bus := make([]models.VProduct, len(dbPrds))
+func toBusProducts(dbPrds []productDB) ([]vproductmodels.Product, error) {
+	bus := make([]vproductmodels.Product, len(dbPrds))
 
 	for i, dbPrd := range dbPrds {
 		var err error

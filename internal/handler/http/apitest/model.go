@@ -1,13 +1,18 @@
 package apitest
 
-import "github.com/ardanlabs/service/internal/models"
+import (
+	auditmodels "github.com/ardanlabs/service/internal/audit/models"
+	homemodels "github.com/ardanlabs/service/internal/home/models"
+	productmodels "github.com/ardanlabs/service/internal/product/models"
+	usermodels "github.com/ardanlabs/service/internal/user/models"
+)
 
 // User extends the dbtest user for api test support.
 type User struct {
-	models.User
-	Products []models.Product
-	Homes    []models.Home
-	Audits   []models.Audit
+	usermodels.User
+	Products []productmodels.Product
+	Homes    []homemodels.Home
+	Audits   []auditmodels.Audit
 	Token    string
 }
 

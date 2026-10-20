@@ -5,7 +5,8 @@ package auditotel
 import (
 	"context"
 
-	"github.com/ardanlabs/service/internal/models"
+	auditmodels "github.com/ardanlabs/service/internal/audit/models"
+
 	"github.com/ardanlabs/service/internal/sys/order"
 	"github.com/ardanlabs/service/internal/sys/page"
 	auditbus "github.com/ardanlabs/service/internal/usecase/audit"
@@ -27,20 +28,20 @@ func NewExtension() auditbus.Extension {
 }
 
 // Create adds a new audit record to the system.
-func (ext *Extension) Create(ctx context.Context, na models.NewAudit) (models.Audit, error) {
+func (ext *Extension) Create(ctx context.Context, na auditmodels.NewAudit) (auditmodels.Audit, error) {
 	ctx, span := otel.AddSpan(ctx, "business.auditbus.create")
 	defer span.End()
 
 	usr, err := ext.bus.Create(ctx, na)
 	if err != nil {
-		return models.Audit{}, err
+		return auditmodels.Audit{}, err
 	}
 
 	return usr, nil
 }
 
 // Query queries the audit records.
-func (ext *Extension) Query(ctx context.Context, filter auditbus.QueryFilter, orderBy order.By, page page.Page) ([]models.Audit, error) {
+func (ext *Extension) Query(ctx context.Context, filter auditbus.QueryFilter, orderBy order.By, page page.Page) ([]auditmodels.Audit, error) {
 	ctx, span := otel.AddSpan(ctx, "business.auditbus.query")
 	defer span.End()
 

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ardanlabs/service/internal/models"
+	usermodels "github.com/ardanlabs/service/internal/user/models"
 )
 
-func applyFilter(filter models.UserQueryFilter, data map[string]any, buf *bytes.Buffer) {
+func applyFilter(filter usermodels.QueryFilter, data map[string]any, buf *bytes.Buffer) {
 	var wc []string
 
 	if filter.ID != nil {

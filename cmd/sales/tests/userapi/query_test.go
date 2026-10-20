@@ -5,16 +5,17 @@ import (
 	"net/http"
 	"sort"
 
+	usermodels "github.com/ardanlabs/service/internal/user/models"
+
 	errs "github.com/ardanlabs/service/internal/errors"
 	"github.com/ardanlabs/service/internal/handler/http/apitest"
 	"github.com/ardanlabs/service/internal/handler/http/query"
 	userapp "github.com/ardanlabs/service/internal/handler/http/user"
-	"github.com/ardanlabs/service/internal/models"
 	"github.com/google/go-cmp/cmp"
 )
 
 func query200(sd apitest.SeedData) []apitest.Table {
-	usrs := make([]models.User, 0, len(sd.Admins)+len(sd.Users))
+	usrs := make([]usermodels.User, 0, len(sd.Admins)+len(sd.Users))
 
 	for _, adm := range sd.Admins {
 		usrs = append(usrs, adm.User)

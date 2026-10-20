@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	errs "github.com/ardanlabs/service/internal/errors"
-	"github.com/ardanlabs/service/internal/models/types/name"
+	"github.com/ardanlabs/service/internal/types/name"
 	productbus "github.com/ardanlabs/service/internal/usecase/product"
 	"github.com/google/uuid"
 )

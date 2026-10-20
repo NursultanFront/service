@@ -6,7 +6,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ardanlabs/service/internal/models"
+	auditmodels "github.com/ardanlabs/service/internal/audit/models"
+
 	sqldb "github.com/ardanlabs/service/internal/sys/db"
 	"github.com/ardanlabs/service/internal/sys/order"
 	"github.com/ardanlabs/service/internal/sys/page"
@@ -29,7 +30,7 @@ func NewStore(log *logger.Logger, db *sqlx.DB) *Store {
 }
 
 // Create inserts a new audit record into the database.
-func (s *Store) Create(ctx context.Context, a models.Audit) error {
+func (s *Store) Create(ctx context.Context, a auditmodels.Audit) error {
 	const q = `
 	INSERT INTO audit
 		(id, obj_id, obj_domain, obj_name, actor_id, action, data, message, timestamp)
@@ -48,7 +49,7 @@ func (s *Store) Create(ctx context.Context, a models.Audit) error {
 	return nil
 }
 
-func (s *Store) Query(ctx context.Context, filter models.AuditQueryFilter, orderBy order.By, page page.Page) ([]models.Audit, error) {
+func (s *Store) Query(ctx context.Context, filter auditmodels.QueryFilter, orderBy order.By, page page.Page) ([]auditmodels.Audit, error) {
 	data := map[string]any{
 		"offset":        (page.Number() - 1) * page.RowsPerPage(),
 		"rows_per_page": page.RowsPerPage(),
@@ -81,7 +82,7 @@ func (s *Store) Query(ctx context.Context, filter models.AuditQueryFilter, order
 }
 
 // Count returns the total number of users in the DB.
-func (s *Store) Count(ctx context.Context, filter models.AuditQueryFilter) (int, error) {
+func (s *Store) Count(ctx context.Context, filter auditmodels.QueryFilter) (int, error) {
 	data := map[string]any{}
 
 	const q = `

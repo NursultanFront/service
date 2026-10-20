@@ -3,7 +3,7 @@ package models
 import (
 	"time"
 
-	"github.com/ardanlabs/service/internal/models/types/home"
+	"github.com/ardanlabs/service/internal/types/home"
 	"github.com/google/uuid"
 )
 
@@ -11,9 +11,9 @@ import (
 // internal/repository no longer imports internal/usecase; the usecase package
 // keeps aliases, so its API is unchanged.
 
-// HomeQueryFilter holds the available fields a query can be filtered on.
+// QueryFilter holds the available fields a query can be filtered on.
 // We are using pointer semantics because the With API mutates the value.
-type HomeQueryFilter struct {
+type QueryFilter struct {
 	ID               *uuid.UUID
 	UserID           *uuid.UUID
 	Type             *home.Home
@@ -23,7 +23,7 @@ type HomeQueryFilter struct {
 
 // Set of fields that home results can be ordered by.
 const (
-	HomeOrderByID     = "a"
-	HomeOrderByType   = "b"
-	HomeOrderByUserID = "c"
+	OrderByID     = "a"
+	OrderByType   = "b"
+	OrderByUserID = "c"
 )

@@ -5,16 +5,17 @@ import (
 	"net/http"
 	"sort"
 
+	productmodels "github.com/ardanlabs/service/internal/product/models"
+
 	errs "github.com/ardanlabs/service/internal/errors"
 	"github.com/ardanlabs/service/internal/handler/http/apitest"
 	productapp "github.com/ardanlabs/service/internal/handler/http/product"
 	"github.com/ardanlabs/service/internal/handler/http/query"
-	"github.com/ardanlabs/service/internal/models"
 	"github.com/google/go-cmp/cmp"
 )
 
 func query200(sd apitest.SeedData) []apitest.Table {
-	prds := make([]models.Product, 0, len(sd.Admins[0].Products)+len(sd.Users[0].Products))
+	prds := make([]productmodels.Product, 0, len(sd.Admins[0].Products)+len(sd.Users[0].Products))
 	prds = append(prds, sd.Admins[0].Products...)
 	prds = append(prds, sd.Users[0].Products...)
 

@@ -3,11 +3,12 @@ package audit_test
 import (
 	"time"
 
+	auditmodels "github.com/ardanlabs/service/internal/audit/models"
+
 	auditapp "github.com/ardanlabs/service/internal/handler/http/audit"
-	"github.com/ardanlabs/service/internal/models"
 )
 
-func toAppAudit(bus models.Audit) auditapp.Audit {
+func toAppAudit(bus auditmodels.Audit) auditapp.Audit {
 	return auditapp.Audit{
 		ID:        bus.ID.String(),
 		ObjID:     bus.ObjID.String(),
@@ -21,7 +22,7 @@ func toAppAudit(bus models.Audit) auditapp.Audit {
 	}
 }
 
-func toAppAudits(audits []models.Audit) []auditapp.Audit {
+func toAppAudits(audits []auditmodels.Audit) []auditapp.Audit {
 	app := make([]auditapp.Audit, len(audits))
 	for i, adt := range audits {
 		app[i] = toAppAudit(adt)

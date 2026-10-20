@@ -8,7 +8,8 @@ import (
 	"slices"
 	"time"
 
-	"github.com/ardanlabs/service/internal/models"
+	homemodels "github.com/ardanlabs/service/internal/home/models"
+
 	sqldb "github.com/ardanlabs/service/internal/sys/db"
 	"github.com/ardanlabs/service/internal/sys/delegate"
 	"github.com/ardanlabs/service/internal/sys/order"
@@ -19,7 +20,7 @@ import (
 
 // Set of error variables for CRUD operations.
 var (
-	ErrNotFound     = models.ErrHomeNotFound // NOTE(AI): moved to models in step (b2)
+	ErrNotFound     = homemodels.ErrNotFound // NOTE(AI): moved to models in step (b2)
 	ErrUserDisabled = errors.New("user disabled")
 )
 
@@ -27,13 +28,13 @@ var (
 // around the core business logic.
 type ExtBusiness interface {
 	NewWithTx(tx sqldb.CommitRollbacker) (ExtBusiness, error)
-	Create(ctx context.Context, nh models.NewHome) (models.Home, error)
-	Update(ctx context.Context, hme models.Home, uh models.UpdateHome) (models.Home, error)
-	Delete(ctx context.Context, hme models.Home) error
-	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]models.Home, error)
+	Create(ctx context.Context, nh homemodels.NewHome) (homemodels.Home, error)
+	Update(ctx context.Context, hme homemodels.Home, uh homemodels.UpdateHome) (homemodels.Home, error)
+	Delete(ctx context.Context, hme homemodels.Home) error
+	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]homemodels.Home, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
-	QueryByID(ctx context.Context, homeID uuid.UUID) (models.Home, error)
-	QueryByUserID(ctx context.Context, userID uuid.UUID) ([]models.Home, error)
+	QueryByID(ctx context.Context, homeID uuid.UUID) (homemodels.Home, error)
+	QueryByUserID(ctx context.Context, userID uuid.UUID) ([]homemodels.Home, error)
 }
 
 // Extension is a function that wraps a new layer of business logic
@@ -92,22 +93,22 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (ExtBusiness, error) {
 }
 
 // Create adds a new home to the system.
-func (b *Business) Create(ctx context.Context, nh models.NewHome) (models.Home, error) {
+func (b *Business) Create(ctx context.Context, nh homemodels.NewHome) (homemodels.Home, error) {
 	usr, err := b.userBus.QueryByID(ctx, nh.UserID)
 	if err != nil {
-		return models.Home{}, fmt.Errorf("user.querybyid: %s: %w", nh.UserID, err)
+		return homemodels.Home{}, fmt.Errorf("user.querybyid: %s: %w", nh.UserID, err)
 	}
 
 	if !usr.Enabled {
-		return models.Home{}, ErrUserDisabled
+		return homemodels.Home{}, ErrUserDisabled
 	}
 
 	now := time.Now()
 
-	hme := models.Home{
+	hme := homemodels.Home{
 		ID:   uuid.New(),
 		Type: nh.Type,
-		Address: models.Address{
+		Address: homemodels.Address{
 			Address1: nh.Address.Address1,
 			Address2: nh.Address.Address2,
 			ZipCode:  nh.Address.ZipCode,
@@ -121,14 +122,14 @@ func (b *Business) Create(ctx context.Context, nh models.NewHome) (models.Home, 
 	}
 
 	if err := b.storer.Create(ctx, hme); err != nil {
-		return models.Home{}, fmt.Errorf("create: %w", err)
+		return homemodels.Home{}, fmt.Errorf("create: %w", err)
 	}
 
 	return hme, nil
 }
 
 // Update modifies information about a home.
-func (b *Business) Update(ctx context.Context, hme models.Home, uh models.UpdateHome) (models.Home, error) {
+func (b *Business) Update(ctx context.Context, hme homemodels.Home, uh homemodels.UpdateHome) (homemodels.Home, error) {
 	if uh.Type != nil {
 		hme.Type = *uh.Type
 	}
@@ -162,14 +163,14 @@ func (b *Business) Update(ctx context.Context, hme models.Home, uh models.Update
 	hme.DateUpdated = time.Now()
 
 	if err := b.storer.Update(ctx, hme); err != nil {
-		return models.Home{}, fmt.Errorf("update: %w", err)
+		return homemodels.Home{}, fmt.Errorf("update: %w", err)
 	}
 
 	return hme, nil
 }
 
 // Delete removes the specified home.
-func (b *Business) Delete(ctx context.Context, hme models.Home) error {
+func (b *Business) Delete(ctx context.Context, hme homemodels.Home) error {
 	if err := b.storer.Delete(ctx, hme); err != nil {
 		return fmt.Errorf("delete: %w", err)
 	}
@@ -178,7 +179,7 @@ func (b *Business) Delete(ctx context.Context, hme models.Home) error {
 }
 
 // Query retrieves a list of existing homes.
-func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]models.Home, error) {
+func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]homemodels.Home, error) {
 	hmes, err := b.storer.Query(ctx, filter, orderBy, page)
 	if err != nil {
 		return nil, fmt.Errorf("query: %w", err)
@@ -193,17 +194,17 @@ func (b *Business) Count(ctx context.Context, filter QueryFilter) (int, error) {
 }
 
 // QueryByID finds the home by the specified ID.
-func (b *Business) QueryByID(ctx context.Context, homeID uuid.UUID) (models.Home, error) {
+func (b *Business) QueryByID(ctx context.Context, homeID uuid.UUID) (homemodels.Home, error) {
 	hme, err := b.storer.QueryByID(ctx, homeID)
 	if err != nil {
-		return models.Home{}, fmt.Errorf("query: homeID[%s]: %w", homeID, err)
+		return homemodels.Home{}, fmt.Errorf("query: homeID[%s]: %w", homeID, err)
 	}
 
 	return hme, nil
 }
 
 // QueryByUserID finds the homes by a specified User ID.
-func (b *Business) QueryByUserID(ctx context.Context, userID uuid.UUID) ([]models.Home, error) {
+func (b *Business) QueryByUserID(ctx context.Context, userID uuid.UUID) ([]homemodels.Home, error) {
 	hmes, err := b.storer.QueryByUserID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("query: %w", err)

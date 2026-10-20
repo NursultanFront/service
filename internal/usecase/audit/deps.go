@@ -3,7 +3,8 @@ package audit
 import (
 	"context"
 
-	"github.com/ardanlabs/service/internal/models"
+	auditmodels "github.com/ardanlabs/service/internal/audit/models"
+
 	"github.com/ardanlabs/service/internal/sys/order"
 	"github.com/ardanlabs/service/internal/sys/page"
 )
@@ -11,7 +12,7 @@ import (
 // Storer interface declares the behavior this package needs to persist and
 // retrieve data.
 type Storer interface {
-	Create(ctx context.Context, audit models.Audit) error
-	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]models.Audit, error)
+	Create(ctx context.Context, audit auditmodels.Audit) error
+	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]auditmodels.Audit, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 }

@@ -9,7 +9,8 @@ import (
 	"slices"
 	"time"
 
-	"github.com/ardanlabs/service/internal/models"
+	usermodels "github.com/ardanlabs/service/internal/user/models"
+
 	sqldb "github.com/ardanlabs/service/internal/sys/db"
 	"github.com/ardanlabs/service/internal/sys/delegate"
 	"github.com/ardanlabs/service/internal/sys/order"
@@ -21,8 +22,8 @@ import (
 
 // Set of error variables for CRUD operations.
 var (
-	ErrNotFound              = models.ErrUserNotFound    // NOTE(AI): moved to models in step (b2)
-	ErrUniqueEmail           = models.ErrUserUniqueEmail // NOTE(AI): moved to models in step (b2)
+	ErrNotFound              = usermodels.ErrNotFound    // NOTE(AI): moved to models in step (b2)
+	ErrUniqueEmail           = usermodels.ErrUniqueEmail // NOTE(AI): moved to models in step (b2)
 	ErrAuthenticationFailure = errors.New("authentication failed")
 )
 
@@ -30,14 +31,14 @@ var (
 // around the core business logic.
 type ExtBusiness interface {
 	NewWithTx(tx sqldb.CommitRollbacker) (ExtBusiness, error)
-	Create(ctx context.Context, actorID uuid.UUID, nu models.NewUser) (models.User, error)
-	Update(ctx context.Context, actorID uuid.UUID, usr models.User, uu models.UpdateUser) (models.User, error)
-	Delete(ctx context.Context, actorID uuid.UUID, usr models.User) error
-	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]models.User, error)
+	Create(ctx context.Context, actorID uuid.UUID, nu usermodels.NewUser) (usermodels.User, error)
+	Update(ctx context.Context, actorID uuid.UUID, usr usermodels.User, uu usermodels.UpdateUser) (usermodels.User, error)
+	Delete(ctx context.Context, actorID uuid.UUID, usr usermodels.User) error
+	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]usermodels.User, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
-	QueryByID(ctx context.Context, userID uuid.UUID) (models.User, error)
-	QueryByEmail(ctx context.Context, email mail.Address) (models.User, error)
-	Authenticate(ctx context.Context, email mail.Address, password string) (models.User, error)
+	QueryByID(ctx context.Context, userID uuid.UUID) (usermodels.User, error)
+	QueryByEmail(ctx context.Context, email mail.Address) (usermodels.User, error)
+	Authenticate(ctx context.Context, email mail.Address, password string) (usermodels.User, error)
 }
 
 // Extension is a function that wraps a new layer of business logic
@@ -85,15 +86,15 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (ExtBusiness, error) {
 }
 
 // Create adds a new user to the system.
-func (b *Business) Create(ctx context.Context, actorID uuid.UUID, nu models.NewUser) (models.User, error) {
+func (b *Business) Create(ctx context.Context, actorID uuid.UUID, nu usermodels.NewUser) (usermodels.User, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(nu.Password.String()), bcrypt.DefaultCost)
 	if err != nil {
-		return models.User{}, fmt.Errorf("generatefrompassword: %w", err)
+		return usermodels.User{}, fmt.Errorf("generatefrompassword: %w", err)
 	}
 
 	now := time.Now()
 
-	usr := models.User{
+	usr := usermodels.User{
 		ID:           uuid.New(),
 		Name:         nu.Name,
 		Email:        nu.Email,
@@ -106,14 +107,14 @@ func (b *Business) Create(ctx context.Context, actorID uuid.UUID, nu models.NewU
 	}
 
 	if err := b.storer.Create(ctx, usr); err != nil {
-		return models.User{}, fmt.Errorf("create: %w", err)
+		return usermodels.User{}, fmt.Errorf("create: %w", err)
 	}
 
 	return usr, nil
 }
 
 // Update modifies information about a user.
-func (b *Business) Update(ctx context.Context, actorID uuid.UUID, usr models.User, uu models.UpdateUser) (models.User, error) {
+func (b *Business) Update(ctx context.Context, actorID uuid.UUID, usr usermodels.User, uu usermodels.UpdateUser) (usermodels.User, error) {
 	if uu.Name != nil {
 		usr.Name = *uu.Name
 	}
@@ -129,7 +130,7 @@ func (b *Business) Update(ctx context.Context, actorID uuid.UUID, usr models.Use
 	if uu.Password != nil {
 		pw, err := bcrypt.GenerateFromPassword([]byte(uu.Password.String()), bcrypt.DefaultCost)
 		if err != nil {
-			return models.User{}, fmt.Errorf("generatefrompassword: %w", err)
+			return usermodels.User{}, fmt.Errorf("generatefrompassword: %w", err)
 		}
 		usr.PasswordHash = pw
 	}
@@ -145,14 +146,14 @@ func (b *Business) Update(ctx context.Context, actorID uuid.UUID, usr models.Use
 	usr.DateUpdated = time.Now()
 
 	if err := b.storer.Update(ctx, usr); err != nil {
-		return models.User{}, fmt.Errorf("update: %w", err)
+		return usermodels.User{}, fmt.Errorf("update: %w", err)
 	}
 
 	return usr, nil
 }
 
 // Delete removes the specified user.
-func (b *Business) Delete(ctx context.Context, actorID uuid.UUID, usr models.User) error {
+func (b *Business) Delete(ctx context.Context, actorID uuid.UUID, usr usermodels.User) error {
 	if err := b.storer.Delete(ctx, usr); err != nil {
 		return fmt.Errorf("delete: %w", err)
 	}
@@ -167,7 +168,7 @@ func (b *Business) Delete(ctx context.Context, actorID uuid.UUID, usr models.Use
 }
 
 // Query retrieves a list of existing users.
-func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]models.User, error) {
+func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]usermodels.User, error) {
 	users, err := b.storer.Query(ctx, filter, orderBy, page)
 	if err != nil {
 		return nil, fmt.Errorf("query: %w", err)
@@ -182,20 +183,20 @@ func (b *Business) Count(ctx context.Context, filter QueryFilter) (int, error) {
 }
 
 // QueryByID finds the user by the specified ID.
-func (b *Business) QueryByID(ctx context.Context, userID uuid.UUID) (models.User, error) {
+func (b *Business) QueryByID(ctx context.Context, userID uuid.UUID) (usermodels.User, error) {
 	user, err := b.storer.QueryByID(ctx, userID)
 	if err != nil {
-		return models.User{}, fmt.Errorf("query: userID[%s]: %w", userID, err)
+		return usermodels.User{}, fmt.Errorf("query: userID[%s]: %w", userID, err)
 	}
 
 	return user, nil
 }
 
 // QueryByEmail finds the user by a specified user email.
-func (b *Business) QueryByEmail(ctx context.Context, email mail.Address) (models.User, error) {
+func (b *Business) QueryByEmail(ctx context.Context, email mail.Address) (usermodels.User, error) {
 	user, err := b.storer.QueryByEmail(ctx, email)
 	if err != nil {
-		return models.User{}, fmt.Errorf("query: email[%s]: %w", email, err)
+		return usermodels.User{}, fmt.Errorf("query: email[%s]: %w", email, err)
 	}
 
 	return user, nil
@@ -204,14 +205,14 @@ func (b *Business) QueryByEmail(ctx context.Context, email mail.Address) (models
 // Authenticate finds a user by their email and verifies their password. On
 // success it returns a Claims User representing this user. The claims can be
 // used to generate a token for future authentication.
-func (b *Business) Authenticate(ctx context.Context, email mail.Address, password string) (models.User, error) {
+func (b *Business) Authenticate(ctx context.Context, email mail.Address, password string) (usermodels.User, error) {
 	usr, err := b.QueryByEmail(ctx, email)
 	if err != nil {
-		return models.User{}, fmt.Errorf("query: email[%s]: %w", email, err)
+		return usermodels.User{}, fmt.Errorf("query: email[%s]: %w", email, err)
 	}
 
 	if err := bcrypt.CompareHashAndPassword(usr.PasswordHash, []byte(password)); err != nil {
-		return models.User{}, fmt.Errorf("comparehashandpassword: %w", ErrAuthenticationFailure)
+		return usermodels.User{}, fmt.Errorf("comparehashandpassword: %w", ErrAuthenticationFailure)
 	}
 
 	return usr, nil

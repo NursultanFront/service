@@ -8,7 +8,8 @@ import (
 	"slices"
 	"time"
 
-	"github.com/ardanlabs/service/internal/models"
+	productmodels "github.com/ardanlabs/service/internal/product/models"
+
 	sqldb "github.com/ardanlabs/service/internal/sys/db"
 	"github.com/ardanlabs/service/internal/sys/delegate"
 	"github.com/ardanlabs/service/internal/sys/order"
@@ -19,7 +20,7 @@ import (
 
 // Set of error variables for CRUD operations.
 var (
-	ErrNotFound     = models.ErrProductNotFound // NOTE(AI): moved to models in step (b2)
+	ErrNotFound     = productmodels.ErrNotFound // NOTE(AI): moved to models in step (b2)
 	ErrUserDisabled = errors.New("user disabled")
 	ErrInvalidCost  = errors.New("cost not valid")
 )
@@ -28,13 +29,13 @@ var (
 // around the core business logic.
 type ExtBusiness interface {
 	NewWithTx(tx sqldb.CommitRollbacker) (ExtBusiness, error)
-	Create(ctx context.Context, np models.NewProduct) (models.Product, error)
-	Update(ctx context.Context, prd models.Product, up models.UpdateProduct) (models.Product, error)
-	Delete(ctx context.Context, prd models.Product) error
-	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]models.Product, error)
+	Create(ctx context.Context, np productmodels.NewProduct) (productmodels.Product, error)
+	Update(ctx context.Context, prd productmodels.Product, up productmodels.UpdateProduct) (productmodels.Product, error)
+	Delete(ctx context.Context, prd productmodels.Product) error
+	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]productmodels.Product, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
-	QueryByID(ctx context.Context, productID uuid.UUID) (models.Product, error)
-	QueryByUserID(ctx context.Context, userID uuid.UUID) ([]models.Product, error)
+	QueryByID(ctx context.Context, productID uuid.UUID) (productmodels.Product, error)
+	QueryByUserID(ctx context.Context, userID uuid.UUID) ([]productmodels.Product, error)
 }
 
 // Extension is a function that wraps a new layer of business logic
@@ -93,19 +94,19 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (ExtBusiness, error) {
 }
 
 // Create adds a new product to the system.
-func (b *Business) Create(ctx context.Context, np models.NewProduct) (models.Product, error) {
+func (b *Business) Create(ctx context.Context, np productmodels.NewProduct) (productmodels.Product, error) {
 	usr, err := b.userBus.QueryByID(ctx, np.UserID)
 	if err != nil {
-		return models.Product{}, fmt.Errorf("user.querybyid: %s: %w", np.UserID, err)
+		return productmodels.Product{}, fmt.Errorf("user.querybyid: %s: %w", np.UserID, err)
 	}
 
 	if !usr.Enabled {
-		return models.Product{}, ErrUserDisabled
+		return productmodels.Product{}, ErrUserDisabled
 	}
 
 	now := time.Now()
 
-	prd := models.Product{
+	prd := productmodels.Product{
 		ID:          uuid.New(),
 		Name:        np.Name,
 		Cost:        np.Cost,
@@ -116,14 +117,14 @@ func (b *Business) Create(ctx context.Context, np models.NewProduct) (models.Pro
 	}
 
 	if err := b.storer.Create(ctx, prd); err != nil {
-		return models.Product{}, fmt.Errorf("create: %w", err)
+		return productmodels.Product{}, fmt.Errorf("create: %w", err)
 	}
 
 	return prd, nil
 }
 
 // Update modifies information about a product.
-func (b *Business) Update(ctx context.Context, prd models.Product, up models.UpdateProduct) (models.Product, error) {
+func (b *Business) Update(ctx context.Context, prd productmodels.Product, up productmodels.UpdateProduct) (productmodels.Product, error) {
 	if up.Name != nil {
 		prd.Name = *up.Name
 	}
@@ -139,14 +140,14 @@ func (b *Business) Update(ctx context.Context, prd models.Product, up models.Upd
 	prd.DateUpdated = time.Now()
 
 	if err := b.storer.Update(ctx, prd); err != nil {
-		return models.Product{}, fmt.Errorf("update: %w", err)
+		return productmodels.Product{}, fmt.Errorf("update: %w", err)
 	}
 
 	return prd, nil
 }
 
 // Delete removes the specified product.
-func (b *Business) Delete(ctx context.Context, prd models.Product) error {
+func (b *Business) Delete(ctx context.Context, prd productmodels.Product) error {
 	if err := b.storer.Delete(ctx, prd); err != nil {
 		return fmt.Errorf("delete: %w", err)
 	}
@@ -155,7 +156,7 @@ func (b *Business) Delete(ctx context.Context, prd models.Product) error {
 }
 
 // Query retrieves a list of existing products.
-func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]models.Product, error) {
+func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]productmodels.Product, error) {
 	prds, err := b.storer.Query(ctx, filter, orderBy, page)
 	if err != nil {
 		return nil, fmt.Errorf("query: %w", err)
@@ -170,17 +171,17 @@ func (b *Business) Count(ctx context.Context, filter QueryFilter) (int, error) {
 }
 
 // QueryByID finds the product by the specified ID.
-func (b *Business) QueryByID(ctx context.Context, productID uuid.UUID) (models.Product, error) {
+func (b *Business) QueryByID(ctx context.Context, productID uuid.UUID) (productmodels.Product, error) {
 	prd, err := b.storer.QueryByID(ctx, productID)
 	if err != nil {
-		return models.Product{}, fmt.Errorf("query: productID[%s]: %w", productID, err)
+		return productmodels.Product{}, fmt.Errorf("query: productID[%s]: %w", productID, err)
 	}
 
 	return prd, nil
 }
 
 // QueryByUserID finds the products by a specified User ID.
-func (b *Business) QueryByUserID(ctx context.Context, userID uuid.UUID) ([]models.Product, error) {
+func (b *Business) QueryByUserID(ctx context.Context, userID uuid.UUID) ([]productmodels.Product, error) {
 	prds, err := b.storer.QueryByUserID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("query: %w", err)

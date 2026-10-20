@@ -5,7 +5,10 @@ import (
 	"context"
 	"errors"
 
-	"github.com/ardanlabs/service/internal/models"
+	homemodels "github.com/ardanlabs/service/internal/home/models"
+	productmodels "github.com/ardanlabs/service/internal/product/models"
+	usermodels "github.com/ardanlabs/service/internal/user/models"
+
 	"github.com/ardanlabs/service/internal/sys/auth"
 	sqldb "github.com/ardanlabs/service/internal/sys/db"
 	"github.com/ardanlabs/service/pkg/foundation/web"
@@ -73,43 +76,43 @@ func GetUserID(ctx context.Context) (uuid.UUID, error) {
 	return v, nil
 }
 
-func setUser(ctx context.Context, usr models.User) context.Context {
+func setUser(ctx context.Context, usr usermodels.User) context.Context {
 	return context.WithValue(ctx, userKey, usr)
 }
 
 // GetUser returns the user from the context.
-func GetUser(ctx context.Context) (models.User, error) {
-	v, ok := ctx.Value(userKey).(models.User)
+func GetUser(ctx context.Context) (usermodels.User, error) {
+	v, ok := ctx.Value(userKey).(usermodels.User)
 	if !ok {
-		return models.User{}, errors.New("user not found in context")
+		return usermodels.User{}, errors.New("user not found in context")
 	}
 
 	return v, nil
 }
 
-func setProduct(ctx context.Context, prd models.Product) context.Context {
+func setProduct(ctx context.Context, prd productmodels.Product) context.Context {
 	return context.WithValue(ctx, productKey, prd)
 }
 
 // GetProduct returns the product from the context.
-func GetProduct(ctx context.Context) (models.Product, error) {
-	v, ok := ctx.Value(productKey).(models.Product)
+func GetProduct(ctx context.Context) (productmodels.Product, error) {
+	v, ok := ctx.Value(productKey).(productmodels.Product)
 	if !ok {
-		return models.Product{}, errors.New("product not found in context")
+		return productmodels.Product{}, errors.New("product not found in context")
 	}
 
 	return v, nil
 }
 
-func setHome(ctx context.Context, hme models.Home) context.Context {
+func setHome(ctx context.Context, hme homemodels.Home) context.Context {
 	return context.WithValue(ctx, homeKey, hme)
 }
 
 // GetHome returns the home from the context.
-func GetHome(ctx context.Context) (models.Home, error) {
-	v, ok := ctx.Value(homeKey).(models.Home)
+func GetHome(ctx context.Context) (homemodels.Home, error) {
+	v, ok := ctx.Value(homeKey).(homemodels.Home)
 	if !ok {
-		return models.Home{}, errors.New("home not found in context")
+		return homemodels.Home{}, errors.New("home not found in context")
 	}
 
 	return v, nil

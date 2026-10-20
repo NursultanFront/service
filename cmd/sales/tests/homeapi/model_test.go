@@ -3,11 +3,12 @@ package home_test
 import (
 	"time"
 
+	homemodels "github.com/ardanlabs/service/internal/home/models"
+
 	homeapp "github.com/ardanlabs/service/internal/handler/http/home"
-	"github.com/ardanlabs/service/internal/models"
 )
 
-func toAppHome(hme models.Home) homeapp.Home {
+func toAppHome(hme homemodels.Home) homeapp.Home {
 	return homeapp.Home{
 		ID:     hme.ID.String(),
 		UserID: hme.UserID.String(),
@@ -25,7 +26,7 @@ func toAppHome(hme models.Home) homeapp.Home {
 	}
 }
 
-func toAppHomes(homes []models.Home) []homeapp.Home {
+func toAppHomes(homes []homemodels.Home) []homeapp.Home {
 	items := make([]homeapp.Home, len(homes))
 	for i, hme := range homes {
 		items[i] = toAppHome(hme)
@@ -34,7 +35,7 @@ func toAppHomes(homes []models.Home) []homeapp.Home {
 	return items
 }
 
-func toAppHomePtr(hme models.Home) *homeapp.Home {
+func toAppHomePtr(hme homemodels.Home) *homeapp.Home {
 	appHme := toAppHome(hme)
 	return &appHme
 }

@@ -5,8 +5,8 @@ import (
 	"time"
 
 	errs "github.com/ardanlabs/service/internal/errors"
-	"github.com/ardanlabs/service/internal/models/types/domain"
-	"github.com/ardanlabs/service/internal/models/types/name"
+	"github.com/ardanlabs/service/internal/types/domain"
+	"github.com/ardanlabs/service/internal/types/name"
 	auditbus "github.com/ardanlabs/service/internal/usecase/audit"
 	"github.com/google/uuid"
 )

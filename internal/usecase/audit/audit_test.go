@@ -8,13 +8,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ardanlabs/service/internal/models"
-	"github.com/ardanlabs/service/internal/models/types/domain"
-	"github.com/ardanlabs/service/internal/models/types/role"
+	auditmodels "github.com/ardanlabs/service/internal/audit/models"
+
 	"github.com/ardanlabs/service/internal/sys/dbtest"
 	"github.com/ardanlabs/service/internal/sys/order"
 	"github.com/ardanlabs/service/internal/sys/page"
 	"github.com/ardanlabs/service/internal/sys/unittest"
+	"github.com/ardanlabs/service/internal/types/domain"
+	"github.com/ardanlabs/service/internal/types/role"
 	auditbus "github.com/ardanlabs/service/internal/usecase/audit"
 	userbus "github.com/ardanlabs/service/internal/usecase/user"
 	"github.com/google/go-cmp/cmp"
@@ -90,12 +91,12 @@ func query(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				return resp
 			},
 			CmpFunc: func(got any, exp any) string {
-				gotResp, exists := got.([]models.Audit)
+				gotResp, exists := got.([]auditmodels.Audit)
 				if !exists {
 					return "error occurred"
 				}
 
-				expResp := exp.([]models.Audit)
+				expResp := exp.([]auditmodels.Audit)
 
 				for i := range gotResp {
 					if gotResp[i].Timestamp.Format(time.RFC3339) == expResp[i].Timestamp.Format(time.RFC3339) {

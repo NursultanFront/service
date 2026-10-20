@@ -3,15 +3,18 @@ package unittest
 import (
 	"context"
 
-	"github.com/ardanlabs/service/internal/models"
+	auditmodels "github.com/ardanlabs/service/internal/audit/models"
+	homemodels "github.com/ardanlabs/service/internal/home/models"
+	productmodels "github.com/ardanlabs/service/internal/product/models"
+	usermodels "github.com/ardanlabs/service/internal/user/models"
 )
 
 // User represents an app user specified for the test.
 type User struct {
-	models.User
-	Products []models.Product
-	Homes    []models.Home
-	Audits   []models.Audit
+	usermodels.User
+	Products []productmodels.Product
+	Homes    []homemodels.Home
+	Audits   []auditmodels.Audit
 }
 
 // SeedData represents data that was seeded for the test.

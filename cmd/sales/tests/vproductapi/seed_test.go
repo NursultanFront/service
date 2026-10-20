@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/ardanlabs/service/internal/handler/http/apitest"
-	"github.com/ardanlabs/service/internal/models/types/role"
 	"github.com/ardanlabs/service/internal/sys/auth"
 	"github.com/ardanlabs/service/internal/sys/dbtest"
+	"github.com/ardanlabs/service/internal/types/role"
 	productbus "github.com/ardanlabs/service/internal/usecase/product"
 	userbus "github.com/ardanlabs/service/internal/usecase/user"
 )

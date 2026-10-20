@@ -10,10 +10,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ardanlabs/service/internal/models"
-	"github.com/ardanlabs/service/internal/models/types/money"
-	"github.com/ardanlabs/service/internal/models/types/name"
-	"github.com/ardanlabs/service/internal/models/types/quantity"
+	productmodels "github.com/ardanlabs/service/internal/product/models"
+
+	"github.com/ardanlabs/service/internal/types/money"
+	"github.com/ardanlabs/service/internal/types/name"
+	"github.com/ardanlabs/service/internal/types/quantity"
 	"github.com/google/uuid"
 )
 
@@ -31,7 +32,7 @@ type ProductDB struct {
 }
 
 // ToDBProduct converts a business product into its database representation.
-func ToDBProduct(bus models.Product) ProductDB {
+func ToDBProduct(bus productmodels.Product) ProductDB {
 	db := ProductDB{
 		ID:          bus.ID,
 		UserID:      bus.UserID,
@@ -47,23 +48,23 @@ func ToDBProduct(bus models.Product) ProductDB {
 
 // ToBusProduct converts a database row into a business product, parsing
 // and validating the typed fields.
-func ToBusProduct(db ProductDB) (models.Product, error) {
+func ToBusProduct(db ProductDB) (productmodels.Product, error) {
 	name, err := name.Parse(db.Name)
 	if err != nil {
-		return models.Product{}, fmt.Errorf("parse name: %w", err)
+		return productmodels.Product{}, fmt.Errorf("parse name: %w", err)
 	}
 
 	cost, err := money.Parse(db.Cost)
 	if err != nil {
-		return models.Product{}, fmt.Errorf("parse cost: %w", err)
+		return productmodels.Product{}, fmt.Errorf("parse cost: %w", err)
 	}
 
 	quantity, err := quantity.Parse(db.Quantity)
 	if err != nil {
-		return models.Product{}, fmt.Errorf("parse quantity: %w", err)
+		return productmodels.Product{}, fmt.Errorf("parse quantity: %w", err)
 	}
 
-	bus := models.Product{
+	bus := productmodels.Product{
 		ID:          db.ID,
 		UserID:      db.UserID,
 		Name:        name,
@@ -77,8 +78,8 @@ func ToBusProduct(db ProductDB) (models.Product, error) {
 }
 
 // ToBusProducts converts a slice of database rows into business products.
-func ToBusProducts(dbs []ProductDB) ([]models.Product, error) {
-	bus := make([]models.Product, len(dbs))
+func ToBusProducts(dbs []ProductDB) ([]productmodels.Product, error) {
+	bus := make([]productmodels.Product, len(dbs))
 
 	for i, db := range dbs {
 		var err error

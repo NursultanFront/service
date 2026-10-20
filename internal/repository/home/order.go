@@ -3,14 +3,15 @@ package home
 import (
 	"fmt"
 
-	"github.com/ardanlabs/service/internal/models"
+	homemodels "github.com/ardanlabs/service/internal/home/models"
+
 	"github.com/ardanlabs/service/internal/sys/order"
 )
 
 var orderByFields = map[string]string{
-	models.HomeOrderByID:     "home_id",
-	models.HomeOrderByType:   "type",
-	models.HomeOrderByUserID: "user_id",
+	homemodels.OrderByID:     "home_id",
+	homemodels.OrderByType:   "type",
+	homemodels.OrderByUserID: "user_id",
 }
 
 func orderByClause(orderBy order.By) (string, error) {

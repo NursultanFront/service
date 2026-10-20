@@ -1,9 +1,11 @@
+// Package models holds the home domain entities, query filter, and order-by
+// fields shared by its usecase and repository layers.
 package models
 
 import (
 	"time"
 
-	"github.com/ardanlabs/service/internal/models/types/home"
+	"github.com/ardanlabs/service/internal/types/home"
 	"github.com/google/uuid"
 )
 

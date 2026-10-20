@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ardanlabs/service/internal/models"
-	"github.com/ardanlabs/service/internal/models/types/domain"
-	"github.com/ardanlabs/service/internal/models/types/name"
+	auditmodels "github.com/ardanlabs/service/internal/audit/models"
+
+	"github.com/ardanlabs/service/internal/types/domain"
+	"github.com/ardanlabs/service/internal/types/name"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx/types"
 )
@@ -24,7 +25,7 @@ type audit struct {
 	Timestamp time.Time          `db:"timestamp"`
 }
 
-func toDBAudit(bus models.Audit) (audit, error) {
+func toDBAudit(bus auditmodels.Audit) (audit, error) {
 	db := audit{
 		ID:        bus.ID,
 		ObjID:     bus.ObjID,
@@ -40,18 +41,18 @@ func toDBAudit(bus models.Audit) (audit, error) {
 	return db, nil
 }
 
-func toBusAudit(db audit) (models.Audit, error) {
+func toBusAudit(db audit) (auditmodels.Audit, error) {
 	domain, err := domain.Parse(db.ObjDomain)
 	if err != nil {
-		return models.Audit{}, fmt.Errorf("parse domain: %w", err)
+		return auditmodels.Audit{}, fmt.Errorf("parse domain: %w", err)
 	}
 
 	name, err := name.Parse(db.ObjName)
 	if err != nil {
-		return models.Audit{}, fmt.Errorf("parse name: %w", err)
+		return auditmodels.Audit{}, fmt.Errorf("parse name: %w", err)
 	}
 
-	bus := models.Audit{
+	bus := auditmodels.Audit{
 		ID:        db.ID,
 		ObjID:     db.ObjID,
 		ObjDomain: domain,
@@ -66,8 +67,8 @@ func toBusAudit(db audit) (models.Audit, error) {
 	return bus, nil
 }
 
-func toBusAudits(dbs []audit) ([]models.Audit, error) {
-	audits := make([]models.Audit, len(dbs))
+func toBusAudits(dbs []audit) ([]auditmodels.Audit, error) {
+	audits := make([]auditmodels.Audit, len(dbs))
 
 	for i, db := range dbs {
 		a, err := toBusAudit(db)

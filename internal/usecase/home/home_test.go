@@ -7,12 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ardanlabs/service/internal/models"
-	"github.com/ardanlabs/service/internal/models/types/home"
-	"github.com/ardanlabs/service/internal/models/types/role"
+	homemodels "github.com/ardanlabs/service/internal/home/models"
+
 	"github.com/ardanlabs/service/internal/sys/dbtest"
 	"github.com/ardanlabs/service/internal/sys/page"
 	"github.com/ardanlabs/service/internal/sys/unittest"
+	"github.com/ardanlabs/service/internal/types/home"
+	"github.com/ardanlabs/service/internal/types/role"
 	homebus "github.com/ardanlabs/service/internal/usecase/home"
 	userbus "github.com/ardanlabs/service/internal/usecase/user"
 	"github.com/google/go-cmp/cmp"
@@ -108,7 +109,7 @@ func insertSeedData(busDomain dbtest.BusDomain) (unittest.SeedData, error) {
 // =============================================================================
 
 func query(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
-	hmes := make([]models.Home, 0, len(sd.Admins[0].Homes)+len(sd.Users[0].Homes))
+	hmes := make([]homemodels.Home, 0, len(sd.Admins[0].Homes)+len(sd.Users[0].Homes))
 	hmes = append(hmes, sd.Admins[0].Homes...)
 	hmes = append(hmes, sd.Users[0].Homes...)
 
@@ -129,12 +130,12 @@ func query(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				return resp
 			},
 			CmpFunc: func(got any, exp any) string {
-				gotResp, exists := got.([]models.Home)
+				gotResp, exists := got.([]homemodels.Home)
 				if !exists {
 					return "error occurred"
 				}
 
-				expResp := exp.([]models.Home)
+				expResp := exp.([]homemodels.Home)
 
 				for i := range gotResp {
 					if gotResp[i].DateCreated.Format(time.RFC3339) == expResp[i].DateCreated.Format(time.RFC3339) {
@@ -161,12 +162,12 @@ func query(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				return resp
 			},
 			CmpFunc: func(got any, exp any) string {
-				gotResp, exists := got.(models.Home)
+				gotResp, exists := got.(homemodels.Home)
 				if !exists {
 					return "error occurred"
 				}
 
-				expResp := exp.(models.Home)
+				expResp := exp.(homemodels.Home)
 
 				if gotResp.DateCreated.Format(time.RFC3339) == expResp.DateCreated.Format(time.RFC3339) {
 					expResp.DateCreated = gotResp.DateCreated
@@ -188,10 +189,10 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 	table := []unittest.Table{
 		{
 			Name: "basic",
-			ExpResp: models.Home{
+			ExpResp: homemodels.Home{
 				UserID: sd.Users[0].ID,
 				Type:   home.Single,
-				Address: models.Address{
+				Address: homemodels.Address{
 					Address1: "123 Mocking Bird Lane",
 					ZipCode:  "35810",
 					City:     "Huntsville",
@@ -200,10 +201,10 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				},
 			},
 			ExcFunc: func(ctx context.Context) any {
-				nh := models.NewHome{
+				nh := homemodels.NewHome{
 					UserID: sd.Users[0].ID,
 					Type:   home.Single,
-					Address: models.Address{
+					Address: homemodels.Address{
 						Address1: "123 Mocking Bird Lane",
 						ZipCode:  "35810",
 						City:     "Huntsville",
@@ -220,12 +221,12 @@ func create(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				return resp
 			},
 			CmpFunc: func(got any, exp any) string {
-				gotResp, exists := got.(models.Home)
+				gotResp, exists := got.(homemodels.Home)
 				if !exists {
 					return "error occurred"
 				}
 
-				expResp := exp.(models.Home)
+				expResp := exp.(homemodels.Home)
 
 				expResp.ID = gotResp.ID
 				expResp.DateCreated = gotResp.DateCreated
@@ -243,11 +244,11 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 	table := []unittest.Table{
 		{
 			Name: "basic",
-			ExpResp: models.Home{
+			ExpResp: homemodels.Home{
 				ID:     sd.Users[0].Homes[0].ID,
 				UserID: sd.Users[0].ID,
 				Type:   home.Single,
-				Address: models.Address{
+				Address: homemodels.Address{
 					Address1: "123 Mocking Bird Lane",
 					Address2: "apt 105",
 					ZipCode:  "35810",
@@ -259,9 +260,9 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				DateUpdated: sd.Users[0].Homes[0].DateCreated,
 			},
 			ExcFunc: func(ctx context.Context) any {
-				uh := models.UpdateHome{
+				uh := homemodels.UpdateHome{
 					Type: &home.Single,
-					Address: &models.UpdateAddress{
+					Address: &homemodels.UpdateAddress{
 						Address1: new("123 Mocking Bird Lane"),
 						Address2: new("apt 105"),
 						ZipCode:  new("35810"),
@@ -279,12 +280,12 @@ func update(busDomain dbtest.BusDomain, sd unittest.SeedData) []unittest.Table {
 				return resp
 			},
 			CmpFunc: func(got any, exp any) string {
-				gotResp, exists := got.(models.Home)
+				gotResp, exists := got.(homemodels.Home)
 				if !exists {
 					return "error occurred"
 				}
 
-				expResp := exp.(models.Home)
+				expResp := exp.(homemodels.Home)
 
 				expResp.DateUpdated = gotResp.DateUpdated
 

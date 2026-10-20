@@ -1,8 +1,10 @@
 package user
 
-import "github.com/ardanlabs/service/internal/models"
+import (
+	usermodels "github.com/ardanlabs/service/internal/user/models"
+)
 
 // QueryFilter holds the available fields a query can be filtered on.
 //
-// NOTE(AI): alias of models.UserQueryFilter (migration step (b2)).
-type QueryFilter = models.UserQueryFilter
+// NOTE(AI): alias of usermodels.QueryFilter (migration step (b2)).
+type QueryFilter = usermodels.QueryFilter

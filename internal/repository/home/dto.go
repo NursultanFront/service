@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ardanlabs/service/internal/models"
-	"github.com/ardanlabs/service/internal/models/types/home"
+	homemodels "github.com/ardanlabs/service/internal/home/models"
+
+	"github.com/ardanlabs/service/internal/types/home"
 	"github.com/google/uuid"
 )
 
@@ -23,7 +24,7 @@ type homeDB struct {
 	DateUpdated time.Time `db:"date_updated"`
 }
 
-func toDBHome(bus models.Home) homeDB {
+func toDBHome(bus homemodels.Home) homeDB {
 	db := homeDB{
 		ID:          bus.ID,
 		UserID:      bus.UserID,
@@ -41,17 +42,17 @@ func toDBHome(bus models.Home) homeDB {
 	return db
 }
 
-func toBusHome(db homeDB) (models.Home, error) {
+func toBusHome(db homeDB) (homemodels.Home, error) {
 	typ, err := home.Parse(db.Type)
 	if err != nil {
-		return models.Home{}, fmt.Errorf("parse type: %w", err)
+		return homemodels.Home{}, fmt.Errorf("parse type: %w", err)
 	}
 
-	bus := models.Home{
+	bus := homemodels.Home{
 		ID:     db.ID,
 		UserID: db.UserID,
 		Type:   typ,
-		Address: models.Address{
+		Address: homemodels.Address{
 			Address1: db.Address1,
 			Address2: db.Address2,
 			ZipCode:  db.ZipCode,
@@ -66,8 +67,8 @@ func toBusHome(db homeDB) (models.Home, error) {
 	return bus, nil
 }
 
-func toBusHomes(dbs []homeDB) ([]models.Home, error) {
-	bus := make([]models.Home, len(dbs))
+func toBusHomes(dbs []homeDB) ([]homemodels.Home, error) {
+	bus := make([]homemodels.Home, len(dbs))
 
 	for i, db := range dbs {
 		var err error

@@ -5,7 +5,8 @@ package homeotel
 import (
 	"context"
 
-	"github.com/ardanlabs/service/internal/models"
+	homemodels "github.com/ardanlabs/service/internal/home/models"
+
 	sqldb "github.com/ardanlabs/service/internal/sys/db"
 	"github.com/ardanlabs/service/internal/sys/order"
 	"github.com/ardanlabs/service/internal/sys/page"
@@ -34,33 +35,33 @@ func (ext *Extension) NewWithTx(tx sqldb.CommitRollbacker) (homebus.ExtBusiness,
 }
 
 // Create applies otel to the home creation process.
-func (ext *Extension) Create(ctx context.Context, nh models.NewHome) (models.Home, error) {
+func (ext *Extension) Create(ctx context.Context, nh homemodels.NewHome) (homemodels.Home, error) {
 	ctx, span := otel.AddSpan(ctx, "business.homebus.create")
 	defer span.End()
 
 	usr, err := ext.bus.Create(ctx, nh)
 	if err != nil {
-		return models.Home{}, err
+		return homemodels.Home{}, err
 	}
 
 	return usr, nil
 }
 
 // Update applies otel to the home update process.
-func (ext *Extension) Update(ctx context.Context, hme models.Home, uh models.UpdateHome) (models.Home, error) {
+func (ext *Extension) Update(ctx context.Context, hme homemodels.Home, uh homemodels.UpdateHome) (homemodels.Home, error) {
 	ctx, span := otel.AddSpan(ctx, "business.homebus.update")
 	defer span.End()
 
 	usr, err := ext.bus.Update(ctx, hme, uh)
 	if err != nil {
-		return models.Home{}, err
+		return homemodels.Home{}, err
 	}
 
 	return usr, nil
 }
 
 // Delete applies otel to the home delete process.
-func (ext *Extension) Delete(ctx context.Context, hme models.Home) error {
+func (ext *Extension) Delete(ctx context.Context, hme homemodels.Home) error {
 	ctx, span := otel.AddSpan(ctx, "business.homebus.delete")
 	defer span.End()
 
@@ -72,7 +73,7 @@ func (ext *Extension) Delete(ctx context.Context, hme models.Home) error {
 }
 
 // Query applies otel to the home query process.
-func (ext *Extension) Query(ctx context.Context, filter homebus.QueryFilter, orderBy order.By, page page.Page) ([]models.Home, error) {
+func (ext *Extension) Query(ctx context.Context, filter homebus.QueryFilter, orderBy order.By, page page.Page) ([]homemodels.Home, error) {
 	ctx, span := otel.AddSpan(ctx, "business.homebus.query")
 	defer span.End()
 
@@ -98,20 +99,20 @@ func (ext *Extension) Count(ctx context.Context, filter homebus.QueryFilter) (in
 }
 
 // QueryByID applies otel to the home query by id process.
-func (ext *Extension) QueryByID(ctx context.Context, homeID uuid.UUID) (models.Home, error) {
+func (ext *Extension) QueryByID(ctx context.Context, homeID uuid.UUID) (homemodels.Home, error) {
 	ctx, span := otel.AddSpan(ctx, "business.homebus.queryByID")
 	defer span.End()
 
 	usr, err := ext.bus.QueryByID(ctx, homeID)
 	if err != nil {
-		return models.Home{}, err
+		return homemodels.Home{}, err
 	}
 
 	return usr, nil
 }
 
 // QueryByUserID applies otel to the home query by user id process.
-func (ext *Extension) QueryByUserID(ctx context.Context, userID uuid.UUID) ([]models.Home, error) {
+func (ext *Extension) QueryByUserID(ctx context.Context, userID uuid.UUID) ([]homemodels.Home, error) {
 	ctx, span := otel.AddSpan(ctx, "business.homebus.queryByUserID")
 	defer span.End()
 

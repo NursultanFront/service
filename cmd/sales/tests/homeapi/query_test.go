@@ -5,16 +5,17 @@ import (
 	"net/http"
 	"sort"
 
+	homemodels "github.com/ardanlabs/service/internal/home/models"
+
 	errs "github.com/ardanlabs/service/internal/errors"
 	"github.com/ardanlabs/service/internal/handler/http/apitest"
 	homeapp "github.com/ardanlabs/service/internal/handler/http/home"
 	"github.com/ardanlabs/service/internal/handler/http/query"
-	"github.com/ardanlabs/service/internal/models"
 	"github.com/google/go-cmp/cmp"
 )
 
 func query200(sd apitest.SeedData) []apitest.Table {
-	hmes := make([]models.Home, 0, len(sd.Admins[0].Homes)+len(sd.Users[0].Homes))
+	hmes := make([]homemodels.Home, 0, len(sd.Admins[0].Homes)+len(sd.Users[0].Homes))
 	hmes = append(hmes, sd.Admins[0].Homes...)
 	hmes = append(hmes, sd.Users[0].Homes...)
 

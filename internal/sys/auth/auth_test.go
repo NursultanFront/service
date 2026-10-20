@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ardanlabs/service/internal/models/types/role"
 	"github.com/ardanlabs/service/internal/sys/auth"
+	"github.com/ardanlabs/service/internal/types/role"
 	"github.com/ardanlabs/service/pkg/foundation/logger"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"

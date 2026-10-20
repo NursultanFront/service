@@ -6,10 +6,11 @@ import (
 	"net/mail"
 	"time"
 
-	"github.com/ardanlabs/service/internal/models"
-	"github.com/ardanlabs/service/internal/models/types/name"
-	"github.com/ardanlabs/service/internal/models/types/role"
+	usermodels "github.com/ardanlabs/service/internal/user/models"
+
 	"github.com/ardanlabs/service/internal/sys/db/dbarray"
+	"github.com/ardanlabs/service/internal/types/name"
+	"github.com/ardanlabs/service/internal/types/role"
 	"github.com/google/uuid"
 )
 
@@ -25,7 +26,7 @@ type userDB struct {
 	DateUpdated  time.Time      `db:"date_updated"`
 }
 
-func toDBUser(bus models.User) userDB {
+func toDBUser(bus usermodels.User) userDB {
 	return userDB{
 		ID:           bus.ID,
 		Name:         bus.Name.String(),
@@ -39,27 +40,27 @@ func toDBUser(bus models.User) userDB {
 	}
 }
 
-func toBusUser(db userDB) (models.User, error) {
+func toBusUser(db userDB) (usermodels.User, error) {
 	addr := mail.Address{
 		Address: db.Email,
 	}
 
 	roles, err := role.ParseMany(db.Roles)
 	if err != nil {
-		return models.User{}, fmt.Errorf("parse: %w", err)
+		return usermodels.User{}, fmt.Errorf("parse: %w", err)
 	}
 
 	nme, err := name.Parse(db.Name)
 	if err != nil {
-		return models.User{}, fmt.Errorf("parse name: %w", err)
+		return usermodels.User{}, fmt.Errorf("parse name: %w", err)
 	}
 
 	department, err := name.ParseNull(db.Department.String)
 	if err != nil {
-		return models.User{}, fmt.Errorf("parse department: %w", err)
+		return usermodels.User{}, fmt.Errorf("parse department: %w", err)
 	}
 
-	bus := models.User{
+	bus := usermodels.User{
 		ID:           db.ID,
 		Name:         nme,
 		Email:        addr,
@@ -74,8 +75,8 @@ func toBusUser(db userDB) (models.User, error) {
 	return bus, nil
 }
 
-func toBusUsers(dbs []userDB) ([]models.User, error) {
-	bus := make([]models.User, len(dbs))
+func toBusUsers(dbs []userDB) ([]usermodels.User, error) {
+	bus := make([]usermodels.User, len(dbs))
 
 	for i, db := range dbs {
 		var err error

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ardanlabs/service/internal/models"
+	auditmodels "github.com/ardanlabs/service/internal/audit/models"
 )
 
-func applyFilter(filter models.AuditQueryFilter, data map[string]any, buf *bytes.Buffer) {
+func applyFilter(filter auditmodels.QueryFilter, data map[string]any, buf *bytes.Buffer) {
 	var wc []string
 
 	if filter.ObjID != nil {

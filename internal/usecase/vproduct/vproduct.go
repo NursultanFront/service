@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/ardanlabs/service/internal/models"
+	vproductmodels "github.com/ardanlabs/service/internal/vproduct/models"
+
 	"github.com/ardanlabs/service/internal/sys/order"
 	"github.com/ardanlabs/service/internal/sys/page"
 )
@@ -14,7 +15,7 @@ import (
 // ExtBusiness interface provides support for extensions that wrap extra functionality
 // around the core business logic.
 type ExtBusiness interface {
-	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]models.VProduct, error)
+	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]vproductmodels.Product, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 }
 
@@ -44,7 +45,7 @@ func NewBusiness(storer Storer, extensions ...Extension) ExtBusiness {
 }
 
 // Query retrieves a list of existing products.
-func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]models.VProduct, error) {
+func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]vproductmodels.Product, error) {
 	users, err := b.storer.Query(ctx, filter, orderBy, page)
 	if err != nil {
 		return nil, fmt.Errorf("query: %w", err)

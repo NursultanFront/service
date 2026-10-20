@@ -6,7 +6,7 @@ import (
 	"time"
 
 	errs "github.com/ardanlabs/service/internal/errors"
-	"github.com/ardanlabs/service/internal/models/types/name"
+	"github.com/ardanlabs/service/internal/types/name"
 	userbus "github.com/ardanlabs/service/internal/usecase/user"
 	"github.com/google/uuid"
 )

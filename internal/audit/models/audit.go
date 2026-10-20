@@ -1,11 +1,13 @@
+// Package models holds the audit domain entities, query filter, and order-by
+// fields shared by its usecase and repository layers.
 package models
 
 import (
 	"encoding/json"
 	"time"
 
-	"github.com/ardanlabs/service/internal/models/types/domain"
-	"github.com/ardanlabs/service/internal/models/types/name"
+	"github.com/ardanlabs/service/internal/types/domain"
+	"github.com/ardanlabs/service/internal/types/name"
 	"github.com/google/uuid"
 )
 

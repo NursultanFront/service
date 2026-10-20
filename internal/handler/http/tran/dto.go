@@ -6,13 +6,15 @@ import (
 	"net/mail"
 	"time"
 
+	productmodels "github.com/ardanlabs/service/internal/product/models"
+	usermodels "github.com/ardanlabs/service/internal/user/models"
+
 	errs "github.com/ardanlabs/service/internal/errors"
-	"github.com/ardanlabs/service/internal/models"
-	"github.com/ardanlabs/service/internal/models/types/money"
-	"github.com/ardanlabs/service/internal/models/types/name"
-	"github.com/ardanlabs/service/internal/models/types/password"
-	"github.com/ardanlabs/service/internal/models/types/quantity"
-	"github.com/ardanlabs/service/internal/models/types/role"
+	"github.com/ardanlabs/service/internal/types/money"
+	"github.com/ardanlabs/service/internal/types/name"
+	"github.com/ardanlabs/service/internal/types/password"
+	"github.com/ardanlabs/service/internal/types/quantity"
+	"github.com/ardanlabs/service/internal/types/role"
 )
 
 // Product represents an individual product.
@@ -32,7 +34,7 @@ func (app Product) Encode() ([]byte, string, error) {
 	return data, "application/json", err
 }
 
-func toAppProduct(prd models.Product) Product {
+func toAppProduct(prd productmodels.Product) Product {
 	return Product{
 		ID:          prd.ID.String(),
 		UserID:      prd.UserID.String(),
@@ -70,7 +72,7 @@ type NewUser struct {
 	PasswordConfirm string   `json:"passwordConfirm"`
 }
 
-func toBusNewUser(app NewUser) (models.NewUser, error) {
+func toBusNewUser(app NewUser) (usermodels.NewUser, error) {
 	var errors errs.FieldErrors
 
 	roles, err := role.ParseMany(app.Roles)
@@ -99,10 +101,10 @@ func toBusNewUser(app NewUser) (models.NewUser, error) {
 	}
 
 	if len(errors) > 0 {
-		return models.NewUser{}, fmt.Errorf("validate: %w", errors.ToError())
+		return usermodels.NewUser{}, fmt.Errorf("validate: %w", errors.ToError())
 	}
 
-	bus := models.NewUser{
+	bus := usermodels.NewUser{
 		Name:       nme,
 		Email:      *addr,
 		Roles:      roles,
@@ -122,7 +124,7 @@ type NewProduct struct {
 	Quantity int     `json:"quantity"`
 }
 
-func toBusNewProduct(app NewProduct) (models.NewProduct, error) {
+func toBusNewProduct(app NewProduct) (productmodels.NewProduct, error) {
 	var errors errs.FieldErrors
 
 	name, err := name.Parse(app.Name)
@@ -141,10 +143,10 @@ func toBusNewProduct(app NewProduct) (models.NewProduct, error) {
 	}
 
 	if len(errors) > 0 {
-		return models.NewProduct{}, fmt.Errorf("validate: %w", errors.ToError())
+		return productmodels.NewProduct{}, fmt.Errorf("validate: %w", errors.ToError())
 	}
 
-	bus := models.NewProduct{
+	bus := productmodels.NewProduct{
 		Name:     name,
 		Cost:     cost,
 		Quantity: quantity,

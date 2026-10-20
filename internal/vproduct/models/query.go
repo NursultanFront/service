@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/ardanlabs/service/internal/models/types/name"
+	"github.com/ardanlabs/service/internal/types/name"
 	"github.com/google/uuid"
 )
 
@@ -9,9 +9,9 @@ import (
 // internal/repository no longer imports internal/usecase; the usecase package
 // keeps aliases, so its API is unchanged.
 
-// VProductQueryFilter holds the available fields a query can be filtered on.
+// QueryFilter holds the available fields a query can be filtered on.
 // We are using pointer semantics because the With API mutates the value.
-type VProductQueryFilter struct {
+type QueryFilter struct {
 	ID       *uuid.UUID
 	Name     *name.Name
 	Cost     *float64
@@ -21,10 +21,10 @@ type VProductQueryFilter struct {
 
 // Set of fields that vproduct results can be ordered by.
 const (
-	VProductOrderByProductID = "a"
-	VProductOrderByUserID    = "b"
-	VProductOrderByName      = "c"
-	VProductOrderByCost      = "d"
-	VProductOrderByQuantity  = "e"
-	VProductOrderByUserName  = "f"
+	OrderByProductID = "a"
+	OrderByUserID    = "b"
+	OrderByName      = "c"
+	OrderByCost      = "d"
+	OrderByQuantity  = "e"
+	OrderByUserName  = "f"
 )

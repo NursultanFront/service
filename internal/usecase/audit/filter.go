@@ -1,8 +1,10 @@
 package audit
 
-import "github.com/ardanlabs/service/internal/models"
+import (
+	auditmodels "github.com/ardanlabs/service/internal/audit/models"
+)
 
 // QueryFilter holds the available fields a query can be filtered on.
 //
-// NOTE(AI): alias of models.AuditQueryFilter (migration step (b2)).
-type QueryFilter = models.AuditQueryFilter
+// NOTE(AI): alias of auditmodels.QueryFilter (migration step (b2)).
+type QueryFilter = auditmodels.QueryFilter

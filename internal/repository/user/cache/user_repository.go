@@ -6,7 +6,8 @@ import (
 	"net/mail"
 	"time"
 
-	"github.com/ardanlabs/service/internal/models"
+	usermodels "github.com/ardanlabs/service/internal/user/models"
+
 	sqldb "github.com/ardanlabs/service/internal/sys/db"
 	"github.com/ardanlabs/service/internal/sys/order"
 	"github.com/ardanlabs/service/internal/sys/page"
@@ -24,7 +25,7 @@ import (
 // use; `cache` may be nil (e.g. in tests), so guard against that.
 type Store struct {
 	log    *logger.Logger
-	storer models.UserStorer
+	storer usermodels.Storer
 	cache  *redis.Client
 	ttl    time.Duration
 	inTran bool
@@ -32,7 +33,7 @@ type Store struct {
 
 // NewStore constructs the api for data and caching access. cache may be nil,
 // in which case this Store behaves as a plain passthrough with no caching.
-func NewStore(log *logger.Logger, storer models.UserStorer, cache *redis.Client, ttl time.Duration) *Store {
+func NewStore(log *logger.Logger, storer usermodels.Storer, cache *redis.Client, ttl time.Duration) *Store {
 	return &Store{
 		log:    log,
 		storer: storer,
@@ -43,7 +44,7 @@ func NewStore(log *logger.Logger, storer models.UserStorer, cache *redis.Client,
 
 // NewWithTx constructs a new Store value replacing the sqlx DB
 // value with a sqlx DB value that is currently inside a transaction.
-func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (models.UserStorer, error) {
+func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (usermodels.Storer, error) {
 	txStorer, err := s.storer.NewWithTx(tx)
 	if err != nil {
 		return nil, err
@@ -61,7 +62,7 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (models.UserStorer, error) 
 }
 
 // Create inserts a new user into the database.
-func (s *Store) Create(ctx context.Context, usr models.User) error {
+func (s *Store) Create(ctx context.Context, usr usermodels.User) error {
 	if err := s.storer.Create(ctx, usr); err != nil {
 		return err
 	}
@@ -72,7 +73,7 @@ func (s *Store) Create(ctx context.Context, usr models.User) error {
 }
 
 // Update replaces a user document in the database.
-func (s *Store) Update(ctx context.Context, usr models.User) error {
+func (s *Store) Update(ctx context.Context, usr usermodels.User) error {
 	if err := s.storer.Update(ctx, usr); err != nil {
 		return err
 	}
@@ -83,7 +84,7 @@ func (s *Store) Update(ctx context.Context, usr models.User) error {
 }
 
 // Delete removes a user from the database.
-func (s *Store) Delete(ctx context.Context, usr models.User) error {
+func (s *Store) Delete(ctx context.Context, usr usermodels.User) error {
 	if err := s.storer.Delete(ctx, usr); err != nil {
 		return err
 	}
@@ -94,17 +95,17 @@ func (s *Store) Delete(ctx context.Context, usr models.User) error {
 }
 
 // Query retrieves a list of existing users from the database.
-func (s *Store) Query(ctx context.Context, filter models.UserQueryFilter, orderBy order.By, page page.Page) ([]models.User, error) {
+func (s *Store) Query(ctx context.Context, filter usermodels.QueryFilter, orderBy order.By, page page.Page) ([]usermodels.User, error) {
 	return s.storer.Query(ctx, filter, orderBy, page)
 }
 
 // Count returns the total number of cards in the DB.
-func (s *Store) Count(ctx context.Context, filter models.UserQueryFilter) (int, error) {
+func (s *Store) Count(ctx context.Context, filter usermodels.QueryFilter) (int, error) {
 	return s.storer.Count(ctx, filter)
 }
 
 // QueryByID gets the specified user from the database.
-func (s *Store) QueryByID(ctx context.Context, userID uuid.UUID) (models.User, error) {
+func (s *Store) QueryByID(ctx context.Context, userID uuid.UUID) (usermodels.User, error) {
 	if !s.inTran {
 		if cachedUsr, ok := s.readCache(ctx, userID.String()); ok {
 			return cachedUsr, nil
@@ -113,7 +114,7 @@ func (s *Store) QueryByID(ctx context.Context, userID uuid.UUID) (models.User, e
 
 	usr, err := s.storer.QueryByID(ctx, userID)
 	if err != nil {
-		return models.User{}, err
+		return usermodels.User{}, err
 	}
 
 	s.writeOrInvalidate(ctx, usr)
@@ -122,7 +123,7 @@ func (s *Store) QueryByID(ctx context.Context, userID uuid.UUID) (models.User, e
 }
 
 // QueryByEmail gets the specified user from the database by email.
-func (s *Store) QueryByEmail(ctx context.Context, email mail.Address) (models.User, error) {
+func (s *Store) QueryByEmail(ctx context.Context, email mail.Address) (usermodels.User, error) {
 	if !s.inTran {
 		if cachedUsr, ok := s.readCache(ctx, email.Address); ok {
 			return cachedUsr, nil
@@ -131,7 +132,7 @@ func (s *Store) QueryByEmail(ctx context.Context, email mail.Address) (models.Us
 
 	usr, err := s.storer.QueryByEmail(ctx, email)
 	if err != nil {
-		return models.User{}, err
+		return usermodels.User{}, err
 	}
 
 	s.writeOrInvalidate(ctx, usr)
@@ -144,15 +145,15 @@ func (s *Store) QueryByEmail(ctx context.Context, email mail.Address) (models.Us
 // TODO(dev): implement using s.cache (a *redis.Client). Remember values need
 // to be serialized (redis stores bytes/strings, not Go structs) - e.g. with
 // encoding/json. Guard against s.cache == nil.
-func (s *Store) readCache(ctx context.Context, key string) (models.User, bool) {
-	return models.User{}, false
+func (s *Store) readCache(ctx context.Context, key string) (usermodels.User, bool) {
+	return usermodels.User{}, false
 }
 
 // writeOrInvalidate populates the cache outside a transaction, but only
 // invalidates the entry while inside one. A transactional write is not yet
 // committed and may be rolled back, which would leave the cache holding a row
 // that no longer exists in the database.
-func (s *Store) writeOrInvalidate(ctx context.Context, bus models.User) {
+func (s *Store) writeOrInvalidate(ctx context.Context, bus usermodels.User) {
 	if s.inTran {
 		s.deleteCache(ctx, bus)
 		return
@@ -167,12 +168,12 @@ func (s *Store) writeOrInvalidate(ctx context.Context, bus models.User) {
 // see the redis package's SetEx/Set(...).WithTTL). Guard against s.cache ==
 // nil. The old sturdyc version keyed by both ID and email; consider whether
 // you want the same two keys, or a single key with the other as a lookup.
-func (s *Store) writeCache(ctx context.Context, bus models.User) {
+func (s *Store) writeCache(ctx context.Context, bus usermodels.User) {
 }
 
 // deleteCache performs a safe removal from the cache for the specified userbus.
 //
 // TODO(dev): implement using s.cache (redis DEL). Guard against s.cache ==
 // nil.
-func (s *Store) deleteCache(ctx context.Context, bus models.User) {
+func (s *Store) deleteCache(ctx context.Context, bus usermodels.User) {
 }

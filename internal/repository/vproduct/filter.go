@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ardanlabs/service/internal/models"
+	vproductmodels "github.com/ardanlabs/service/internal/vproduct/models"
 )
 
-func (s *Store) applyFilter(filter models.VProductQueryFilter, data map[string]any, buf *bytes.Buffer) {
+func (s *Store) applyFilter(filter vproductmodels.QueryFilter, data map[string]any, buf *bytes.Buffer) {
 	var wc []string
 
 	if filter.ID != nil {

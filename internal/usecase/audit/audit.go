@@ -8,7 +8,8 @@ import (
 	"slices"
 	"time"
 
-	"github.com/ardanlabs/service/internal/models"
+	auditmodels "github.com/ardanlabs/service/internal/audit/models"
+
 	"github.com/ardanlabs/service/internal/sys/order"
 	"github.com/ardanlabs/service/internal/sys/page"
 	"github.com/ardanlabs/service/pkg/foundation/logger"
@@ -18,8 +19,8 @@ import (
 // ExtBusiness interface provides support for extensions that wrap extra functionality
 // around the core business logic.
 type ExtBusiness interface {
-	Create(ctx context.Context, na models.NewAudit) (models.Audit, error)
-	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]models.Audit, error)
+	Create(ctx context.Context, na auditmodels.NewAudit) (auditmodels.Audit, error)
+	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]auditmodels.Audit, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 }
 
@@ -51,13 +52,13 @@ func NewBusiness(log *logger.Logger, storer Storer, extensions ...Extension) Ext
 }
 
 // Create adds a new audit record to the system.
-func (b *Business) Create(ctx context.Context, na models.NewAudit) (models.Audit, error) {
+func (b *Business) Create(ctx context.Context, na auditmodels.NewAudit) (auditmodels.Audit, error) {
 	jsonData, err := json.Marshal(na.Data)
 	if err != nil {
-		return models.Audit{}, fmt.Errorf("marshal object: %w", err)
+		return auditmodels.Audit{}, fmt.Errorf("marshal object: %w", err)
 	}
 
-	audit := models.Audit{
+	audit := auditmodels.Audit{
 		ID:        uuid.New(),
 		ObjID:     na.ObjID,
 		ObjDomain: na.ObjDomain,
@@ -70,14 +71,14 @@ func (b *Business) Create(ctx context.Context, na models.NewAudit) (models.Audit
 	}
 
 	if err := b.storer.Create(ctx, audit); err != nil {
-		return models.Audit{}, fmt.Errorf("create audit: %w", err)
+		return auditmodels.Audit{}, fmt.Errorf("create audit: %w", err)
 	}
 
 	return audit, nil
 }
 
 // Query retrieves a list of existing audit records.
-func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]models.Audit, error) {
+func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]auditmodels.Audit, error) {
 	audits, err := b.storer.Query(ctx, filter, orderBy, page)
 	if err != nil {
 		return nil, fmt.Errorf("query audits: %w", err)

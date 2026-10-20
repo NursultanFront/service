@@ -10,9 +10,9 @@ import (
 	"time"
 
 	errs "github.com/ardanlabs/service/internal/errors"
-	"github.com/ardanlabs/service/internal/models/types/role"
 	"github.com/ardanlabs/service/internal/service/authclient"
 	"github.com/ardanlabs/service/internal/sys/auth"
+	"github.com/ardanlabs/service/internal/types/role"
 	userbus "github.com/ardanlabs/service/internal/usecase/user"
 	"github.com/ardanlabs/service/pkg/foundation/web"
 	"github.com/golang-jwt/jwt/v5"
