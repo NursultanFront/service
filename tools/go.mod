@@ -1,6 +1,6 @@
 module github.com/ardanlabs/service/tools
 
-go 1.27.0
+go 1.27.2
 
 tool (
 	github.com/divan/expvarmon
@@ -131,6 +131,7 @@ require (
 	github.com/nakagami/firebirdsql v0.0.0-20190310045651-3c02a58cfed8 // indirect
 	github.com/neo4j/neo4j-go-driver v1.8.1-0.20200803113522-b626aa943eba // indirect
 	github.com/nsf/termbox-go v0.0.0-20180613055208-5c94acc5e6eb // indirect
+	github.com/nxadm/tail v1.4.11 // indirect
 	github.com/pierrec/lz4/v4 v4.1.16 // indirect
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
