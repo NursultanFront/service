@@ -12,12 +12,12 @@ import (
 	"syscall"
 
 	"github.com/ardanlabs/conf/v3"
-	"github.com/ardanlabs/service/cmd/metrics/collector"
-	"github.com/ardanlabs/service/cmd/metrics/publisher"
-	expvarsrv "github.com/ardanlabs/service/cmd/metrics/publisher/expvar"
-	prometheussrv "github.com/ardanlabs/service/cmd/metrics/publisher/prometheus"
 	metricscfg "github.com/ardanlabs/service/internal/config/metrics"
 	"github.com/ardanlabs/service/internal/sys/debug"
+	"github.com/ardanlabs/service/internal/sys/metrics/collector"
+	"github.com/ardanlabs/service/internal/sys/metrics/publisher"
+	expvarsrv "github.com/ardanlabs/service/internal/sys/metrics/publisher/expvar"
+	prometheussrv "github.com/ardanlabs/service/internal/sys/metrics/publisher/prometheus"
 	"github.com/ardanlabs/service/pkg/foundation/logger"
 )
 
