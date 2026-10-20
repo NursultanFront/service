@@ -438,7 +438,9 @@ test-r:
 	CGO_ENABLED=1 go test -race -count=1 ./...
 
 test-only:
-	CGO_ENABLED=0 go test -count=1 ./...
+	@# NOTE(AI): -p 4 limits parallel test packages; at the default (one per CPU) Docker
+	@# Desktop drops connections to the shared test Postgres container.
+	CGO_ENABLED=0 go test -p 4 -count=1 ./...
 
 fmt:
 	$(BIN)/goimports -w .
