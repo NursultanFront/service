@@ -56,115 +56,65 @@ project-root/
 
 ---
 
-## 2. Организация `internal/` (Два архитектурных подхода)
+## 2. Организация `internal/` (Доменное разбиение — единственный обязательный вариант)
+
+С 2026-10-20 проект использует **Разбиение по доменам (Domain-Driven Layout / Package by Domain)** по образцу рабочего проекта ментора Германа (`typespace`). Разбиение по слоям на верхнем уровне (`internal/usecase`, `internal/repository`, `internal/models`) **не используется** — не создавай эти папки. История перехода: `DOMAIN_LAYOUT_PLAN.md`.
 
 Внутри `internal/` находятся:
-- **Стандартные инфраструктурные пакеты**: `app`, `config`, `errors`, `generated`, `server` (или внутри `handler`), `service`, `sys`, `workers`.
-- **Бизнес-слои**, которые организуются одним из двух методов ниже.
-  - **По умолчанию для новых и средних проектов используй Метод 1 (Разбиение по слоям / Layered Architecture)**, если пользователь явно не попросил Метод 2 (Доменное разбиение).
-
----
-
-### Метод 1: Разбиение по слоям (Layered Architecture / Package by Layer)
-
-На верхнем уровне `internal/` папки делятся **по архитектурным слоям**, а внутри каждого слоя — по доменным сущностям (`user`, `payment`, `chat` и т.д.):
+- **Инфраструктурные пакеты** (общие для всех доменов): `app`, `config`, `errors`, `generated`, `handler`, `server`, `service`, `sys`, `types`, `workers`.
+- **Доменные папки** (`user`, `product`, `home`, `audit`, `vproduct`, …): каждая владеет своими слоями `models`, `usecase`, `repository`.
 
 ```text
 internal/
-├── app/                        # Инициализация зависимостей (Dependency Injection руками) и запуск серверов/воркеров
-│   └── app.go
-├── config/                     # Чтение конфигурации из ENV / флагов запуска (только технические параметры)
-│   └── config.go
-├── errors/                     # Кастомные ошибки (разделение внутренней ошибки для логов и внешней для клиента)
-│   └── errors.go
-├── generated/                  # Автоматически сгенерированный код (Protobuf/gRPC, OpenAPI). Руками НЕ редактировать!
+├── app/                        # Сборка зависимостей руками (DI) и запуск серверов/воркеров: app/<svc>/
+├── config/                     # Конфигурация из ENV / флагов (только технические параметры): config/<svc>/
+├── errors/                     # Ошибки: внутренняя причина (для логов) + безопасное сообщение (для клиента)
+├── generated/                  # Сгенерированный код (Protobuf/gRPC, OpenAPI). Руками НЕ редактировать!
 │
-├── handler/                    # СЛОЙ 1: Транспортный слой (HTTP / gRPC точки входа)
+├── handler/                    # СЛОЙ 1: Транспорт (HTTP / gRPC хендлеры)
 │   ├── http/
-│   │   ├── server.go           # Настройка роутера, CORS, middleware, запуск HTTP-сервера
-│   │   ├── dto.go              # Входные/выходные JSON-структуры (Request / Response DTO)
-│   │   └── user_handler.go     # Валидация входа, маппинг DTO <-> Models, вызов Usecase
+│   │   ├── mid/                # HTTP middleware
+│   │   └── user/               # user_handler.go, dto.go, filter.go, order.go, route.go
 │   └── grpc/
-│       ├── server.go
-│       └── user_handler.go
+│       └── auth/               # auth_handler.go
 │
-├── usecase/                    # СЛОЙ 2: Слой бизнес-логики (Сценарии использования)
-│   ├── user/
-│   │   ├── deps.go             # Интерфейсы внешних зависимостей для этого пакета (userRepository и др.)
-│   │   └── user.go             # Структура UserUsecase и её методы (Get, Create, Update)
-│   └── payment/
-│       ├── deps.go
-│       └── payment.go
+├── server/                     # Настройка и запуск серверов (роутер, CORS, middleware, lifecycle)
+│   ├── http/
+│   │   └── server.go
+│   └── grpc/
+│       └── server.go
 │
-├── repository/                 # СЛОЙ 3: Слой хранения данных (Работа с БД)
-│   ├── user/
-│   │   ├── query.go            # SQL-запросы (опционально отдельно, либо внутри user_repository.go)
-│   │   └── user_repository.go  # Реализация SQL-запросов и метрик времени. 0% бизнес-логики!
-│   └── payment/
-│       └── payment_repository.go
+├── service/                    # Клиенты к внешним сервисам (S3, другие API, authclient)
+├── sys/                        # Инфраструктура без бизнес-логики (db, metrics, auth, circuit_breaker)
+├── types/                      # Общие строгие типы (Value Objects): name, money, role, password, ...
+├── workers/                    # Фоновые периодические процессы
 │
-├── models/                     # СЛОЙ 4: Чистые бизнес-модели (используются во всём проекте)
-│   ├── user.go                 # struct User, struct UserShortInfo
-│   └── payment.go              # struct Payment
+├── user/                       # 📦 ДОМЕН: Пользователь (всё про User в одной папке)
+│   ├── models/                 # СЛОЙ 4: бизнес-модели домена
+│   │   ├── user.go             # User, NewUser, UpdateUser, Storer, ErrNotFound, ErrUniqueEmail
+│   │   └── query.go            # QueryFilter, OrderBy* константы
+│   ├── usecase/                # СЛОЙ 2: бизнес-логика домена
+│   │   ├── deps.go             # Интерфейсы зависимостей (на стороне потребителя)
+│   │   ├── user.go             # Business / ExtBusiness
+│   │   └── extensions/         # Декораторы (otel, audit, ...)
+│   └── repository/             # СЛОЙ 3: работа с БД (0% бизнес-логики)
+│       ├── user_repository.go
+│       ├── dto.go              # DB-структуры и конвертеры toDB<Type> / toBus<Type>
+│       ├── filter.go
+│       └── order.go
 │
-├── service/                    # Клиенты к внешним сервисам (не классические БД)
-│   ├── file_storage/           # Работа с S3 / MinIO (загрузка фото, документов)
-│   └── docling/                # Внешние API (конвертация документов, внешние провайдеры)
-│
-├── sys/                        # Системно-инфраструктурные пакеты (не влияют на бизнес-логику)
-│   ├── db/                     # Инициализация пула подключений к БД, менеджер транзакций
-│   ├── logger/                 # Обёртка над логгером (zap / slog)
-│   ├── metrics/                # Сбор системных и бизнес-метрик (Prometheus)
-│   └── circuit_breaker/        # Паттерн Circuit Breaker для защиты от падения БД/внешних ресурсов
-│
-└── workers/                    # Фоновые периодические процессы (горутины с циклом select + time.After)
-    └── task_producer.go
-```
-
----
-
-### Метод 2: Разбиение по доменам (Domain-Driven / Package by Feature)
-
-Используется в крупных проектах с множеством независимых доменов. Внутри `internal/` папки верхнего уровня создаются **под каждую доменную сущность** (`user`, `payments`, `chats`, `ad`), а слои (`usecase`, `repository`, `dto`, `models`) лежат внутри каждого домена:
-
-```text
-internal/
-├── app/
-├── config/
-├── errors/
-├── generated/
-├── handler/                    # Внешние HTTP и gRPC хендлеры
-│   ├── grpc/
-│   └── http/
-├── server/                     # Настройка и запуск HTTP и gRPC серверов
-│   ├── grpc/
-│   └── http/
-├── service/                    # Клиенты к внешним сервисам (S3/file_storage и др.)
-├── sys/                        # Инфраструктура (db, logger, metrics, circuit_breaker)
-├── workers/                    # Фоновые воркеры
-│
-├── user/                       # ДОМЕН: Пользователь
-│   ├── dto/                    # Структуры передачи данных (DTO)
-│   ├── models/                 # Внутренние бизнес-модели домена
-│   ├── repository/             # Запросы к БД для сущности User
-│   │   ├── query.go
-│   │   └── user_repository.go
-│   └── usecase/                # Бизнес-сценарии домена User
-│       ├── deps.go
-│       └── user_usecase.go
-│
-├── payments/                   # ДОМЕН: Платежи
-│   ├── dto/
-│   ├── models/
-│   ├── repository/
-│   └── usecase/
-│
-└── chats/                      # ДОМЕН: Чаты
-    ├── dto/
+└── product/                    # 📦 ДОМЕН: Продукты (та же форма: models/, usecase/, repository/)
     ├── models/
-    ├── repository/
-    └── usecase/
+    ├── usecase/
+    └── repository/
 ```
+
+### Правила доменной раскладки:
+1. **Имена пакетов совпадают с папками** (`package models`, `package usecase`, `package repository`). При импорте используй алиасы: `<domain>models`, `<domain>bus` (usecase), `<domain>db` (repository) — например `usermodels`, `userbus`, `userdb`.
+2. **Типы внутри домена без префикса домена**: `usermodels.Storer`, `usermodels.QueryFilter`, `usermodels.OrderByEmail`, `usermodels.ErrNotFound` (не `UserStorer`, `UserQueryFilter`). Имена сущностей (`User`, `NewUser`, `Product`) остаются.
+3. **`repository` импортирует только `internal/<domain>/models`** (и `internal/types/*`), никогда `usecase`.
+4. **Общие строгие типы — в `internal/types/*`**, чтобы домены переиспользовали их без циклических зависимостей. Домен не импортирует `models` другого домена без необходимости; если нужно — только `models`, не `usecase`/`repository`.
+5. **Серверы — в `internal/server/{http,grpc}`**, хендлеры — в `internal/handler/{http,grpc}`.
 
 ---
 
@@ -196,12 +146,12 @@ internal/
 - В папке каждого юскейса создавай файл `deps.go`, в котором описывай нужные этому юскейсу интерфейсы:
 
 ```go
-// internal/usecase/user/deps.go
-package user
+// internal/user/usecase/deps.go
+package usecase
 
 import (
 	"context"
-	"project/internal/models"
+	models "project/internal/user/models"
 )
 
 // Интерфейс объявляется у потребителя (в пакете usecase)
@@ -238,13 +188,13 @@ type paymentProvider interface {
 ### Правило 5: Отказ от пакета-свалки `utils` и кодогенераторов DI (`wire`)
 
 - **Не создавай безликий пакет `utils/`** для всего подряд (со временем он превращается в нечитаемую свалку). Если функция относится к конкретному домену — держи её рядом с доменом; если это системный хелпер — клади в осмысленный пакет внутри `sys/` или `pkg/`.
-- **Не используй `google/wire`** (библиотека заархивирована). Собирай все зависимости явно («руками») в конструкторах внутри `internal/app/app.go`.
+- **Не используй `google/wire`** (библиотека заархивирована). Собирай все зависимости явно («руками») в конструкторах внутри `internal/app/<svc>/app.go`.
 
 ---
 
 ## 4. Эталонный пример связки слоёв в коде
 
-### 1. Бизнес-модель (`internal/models/user.go`)
+### 1. Бизнес-модель (`internal/user/models/user.go`)
 ```go
 package models
 
@@ -268,13 +218,13 @@ type UserShortInfo struct {
 }
 ```
 
-### 2. Репозиторий (`internal/repository/user/user_repository.go`)
+### 2. Репозиторий (`internal/user/repository/user_repository.go`)
 ```go
-package user
+package repository
 
 import (
 	"context"
-	"project/internal/models"
+	models "project/internal/user/models"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -305,14 +255,14 @@ func (r *Repository) GetByID(ctx context.Context, id string) (*models.User, erro
 }
 ```
 
-### 3. Юскейс и его зависимости (`internal/usecase/user/deps.go` и `user.go`)
+### 3. Юскейс и его зависимости (`internal/user/usecase/deps.go` и `user.go`)
 ```go
-// internal/usecase/user/deps.go
-package user
+// internal/user/usecase/deps.go
+package usecase
 
 import (
 	"context"
-	"project/internal/models"
+	models "project/internal/user/models"
 )
 
 type userRepository interface {
@@ -321,13 +271,13 @@ type userRepository interface {
 ```
 
 ```go
-// internal/usecase/user/user.go
-package user
+// internal/user/usecase/user.go
+package usecase
 
 import (
 	"context"
 	"errors"
-	"project/internal/models"
+	models "project/internal/user/models"
 )
 
 var (

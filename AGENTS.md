@@ -55,8 +55,8 @@ one task is done.
   of a big feature completion. You will ask the user about doing this first.
 - Layer conversions (Handler ↔ Usecase ↔ Repository). Primitive types live at the
   edges (API JSON request/response structs in `internal/handler/*` and DB row structs in
-  `internal/repository/*`); strong types from the `internal/models/types/*` subpackages and
-  domain entities in `internal/models/*` live in the Usecase/Models layer. Every crossing
+  `internal/<domain>/repository`); strong types from the `internal/types/*` subpackages and
+  domain entities in `internal/<domain>/models` live in the Usecase/Models layer. Every crossing
   goes through a named converter —
   never assign across a boundary directly:
     - Handler → Usecase: `toBus<Type>` (parses + validates, returns `errs.FieldErrors`)
@@ -64,14 +64,15 @@ one task is done.
     - Usecase → Repository: `toDB<Type>`
     - Repository → Usecase: `toBus<Type>` (parses native → strong, returns error)
 
-  Before writing, editing, or auditing any `internal/handler/*`, `internal/usecase/*`,
-  `internal/models/*`, or `internal/repository/*` Go file, follow the
+  Before writing, editing, or auditing any `internal/handler/*`, `internal/<domain>/usecase`,
+  `internal/<domain>/models`, `internal/types/*`, or `internal/<domain>/repository` Go file,
+  follow the
   `layered-architecture-types` skill — it holds the full type-boundary rules, converter
   table, examples, and a conformance checklist.
 - Usecase-layer extensions (the `ExtBusiness`/`Extension` decorator pattern). Cross-cutting
   concerns (OTEL, logging, metrics, caching, auth) wrap the core `Business` in
-  `internal/usecase/*` without modifying it. Before adding a concern to a usecase domain,
-  creating files under `internal/usecase/*/extensions/*`, or adding the
+  `internal/<domain>/usecase` without modifying it. Before adding a concern to a usecase domain,
+  creating files under `internal/<domain>/usecase/extensions/*`, or adding the
   `ExtBusiness`/`Extension` seam to a usecase package, follow the
   `business-layer-extensions` skill — it holds the three-piece pattern (seam, extension,
   wiring), wrap-order rules, reference examples, and a checklist.
@@ -80,12 +81,15 @@ one task is done.
 
 **`golang_project_structure.md` (repo root) is the project's architecture standard**, adopted
 2026-10-18. It is the source of truth for the repository layout, layers, package and file
-naming. Read it before creating, moving, or reviewing any package. **Method 1 (Layered
-Architecture / package by layer)** is the chosen variant — do not introduce Method 2.
+naming. Read it before creating, moving, or reviewing any package. **Method 2 (Domain-Driven
+Layout / package by domain, as in mentor German's `typespace`)** is the chosen variant since
+2026-10-20 — each business domain owns `internal/<domain>/{models,usecase,repository}`; do not
+reintroduce top-level `internal/{usecase,repository,models}` (Method 1). The migration is
+recorded in `DOMAIN_LAYOUT_PLAN.md`.
 
 Precedence when documents disagree:
 1. **Structure, folders, layers, file naming** → `golang_project_structure.md` wins.
-2. **Code patterns inside a layer** (strong types in `internal/models/types/*`, named
+2. **Code patterns inside a layer** (strong types in `internal/types/*`, named
    converters, `ExtBusiness`/`Extension` decorators, branching style) → the Coding Rules above
    and the `.agents/skills/*` skills win. The standard's code samples are simplified
    illustrations, not a ban on these patterns.
@@ -117,10 +121,13 @@ project-root/
 │   ├── config/           # Config from ENV/flags (technical parameters only)
 │   ├── errors/           # Errors with internal cause (logs) + safe external message (client)
 │   ├── generated/        # Generated code (protobuf/gRPC, OpenAPI) — NEVER edit by hand
-│   ├── handler/          # Layer 1: transport (http/, grpc/) — server.go, dto.go, <entity>_handler.go
-│   ├── usecase/<entity>/ # Layer 2: business logic — deps.go + <entity>.go
-│   ├── repository/<entity>/ # Layer 3: DB access — <entity>_repository.go (+ query.go)
-│   ├── models/           # Layer 4: business entities (+ models/types/* strong value types)
+│   ├── handler/          # Layer 1: transport (http/<entity>/, grpc/<svc>/) — dto.go, <entity>_handler.go, route.go
+│   ├── server/           # HTTP (server/http) and gRPC (server/grpc) server setup, mux, lifecycle
+│   ├── types/            # Shared strong value types (name, money, role, ...) used by all domains
+│   ├── <domain>/         # One folder per business domain (user, product, home, audit, vproduct)
+│   │   ├── models/       # Layer 4: entities, QueryFilter, OrderBy*, Err*, Storer — <domain>.go, query.go
+│   │   ├── usecase/      # Layer 2: business logic — deps.go + <domain>.go (+ extensions/)
+│   │   └── repository/   # Layer 3: DB access — <domain>_repository.go, dto.go, filter.go, order.go
 │   ├── service/          # Clients for external services (non-DB): S3, other APIs, authclient
 │   ├── sys/              # Infrastructure without business logic: db, logger, metrics, circuit_breaker
 │   └── workers/          # Background periodic processes
@@ -145,13 +152,15 @@ project-root/
    - `repository`: SQL, (de)serialization for the DB, query timing metrics. **Zero business
      logic** — it stores/reads exactly what it is given.
 3. **Dependency Inversion via `deps.go`.** Interfaces are declared by the consumer in
-   `internal/usecase/<entity>/deps.go`, never next to the implementation. `usecase` never
+   `internal/<domain>/usecase/deps.go`, never next to the implementation. `usecase` never
    depends on a concrete repository or provider type. **`repository` never imports `usecase`**:
-   query filters (`models.<Entity>QueryFilter`), order-by fields (`models.<Entity>OrderBy*`),
-   shared domain errors (`models.Err<Entity>…`) and the `Storer` interfaces whose `NewWithTx`
-   returns the interface itself (`models.<Entity>Storer`, a Go typing constraint) live in
-   `internal/models`; the usecase package re-exports them as aliases
-   (`type QueryFilter = models.UserQueryFilter`, `type Storer = models.UserStorer`).
+   query filters (`<domain>models.QueryFilter`), order-by fields (`<domain>models.OrderBy*`),
+   shared domain errors (`<domain>models.ErrNotFound`, …) and the `Storer` interfaces whose
+   `NewWithTx` returns the interface itself (`<domain>models.Storer`, a Go typing constraint)
+   live in `internal/<domain>/models`; the usecase package re-exports them as aliases
+   (`type QueryFilter = usermodels.QueryFilter`, `type Storer = usermodels.Storer`).
+   Import aliases: `<domain>bus` for usecase, `<domain>db` for repository, `<domain>models`
+   for models (package names stay `usecase`/`repository`/`models`).
 4. **`models` vs `dto`.** `models` are internal entities (never a raw password — use a hash;
    use a reduced struct such as `UserShortInfo` for restricted views). DTOs (`json`/`db` tags)
    exist only at the edges: `handler` and `repository`.

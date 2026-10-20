@@ -65,7 +65,7 @@ Go is the primary codebase, not the only one.
 All lenses treat **AGENTS.md** (and any nested AGENTS.md) as authoritative.
 
 **`golang_project_structure.md`** (repo root) is the authoritative **structure standard**
-(folders, layers, file names — Method 1, layered). AGENTS.md section *Project Structure &
+(folders, layers, file names — Method 2, domain layout `internal/<domain>/{models,usecase,repository}`). AGENTS.md section *Project Structure &
 Architecture Standard* says how it combines with the skills below. Any diff that adds,
 moves, or renames files/packages, or touches `cmd/*/main.go`, `internal/app`,
 `internal/config`, `pkg/`, `api/`, or a `deps.go`, gets the **structure-standard check**

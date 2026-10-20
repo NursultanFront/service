@@ -46,7 +46,7 @@ files), incorrect transaction scope, and security or authorization regressions.
 **3. Architectural fit.** Layout and file names follow `golang_project_structure.md`
 (Handler → Usecase → Repository, `deps.go` at the consumer, thin `main`); primitives stay
 at the API/DB edges; the Usecase/Models layer
-uses strong types from `internal/models/types/*`; crossings go through the named
+uses strong types from `internal/types/*`; crossings go through the named
 converters (`toBus<Type>`, `fromBus<Type>Response`, `toDB<Type>`); cross-cutting
 concerns use the `ExtBusiness` / `Extension` seam; shallow branching follows the
 repo's flow preferences.

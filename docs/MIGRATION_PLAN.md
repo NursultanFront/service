@@ -1,7 +1,8 @@
 # План миграции к стандарту `golang_project_structure.md`
 
 Стандарт структуры — [`golang_project_structure.md`](../golang_project_structure.md)
-(Метод 1, разбиение по слоям). Правила для агентов и порядок старшинства документов —
+(Метод 2, доменная раскладка `internal/<domain>/{models,usecase,repository}`
+как в `typespace` — с 2026-10-20, см. шаг (j); до этого был Метод 1). Правила для агентов и порядок старшинства документов —
 [`AGENTS.md`](../AGENTS.md), раздел *Project Structure & Architecture Standard*.
 Карта старых путей Ardan Labs → текущие — [`docs/prompts/project-structure.md`](prompts/project-structure.md).
 
@@ -9,7 +10,7 @@
 
 - **Один шаг — одна ветка/PR.** Шаги не смешиваются с фичами и друг с другом.
 - **Без смены логики**, кроме шага (h) (ошибки), где поведение меняется осознанно.
-- Паттерны кода внутри слоёв (строгие типы `internal/models/types/*`, конвертеры
+- Паттерны кода внутри слоёв (строгие типы `internal/types/*`, конвертеры
   `toBus*`/`toDB*`/`fromBus*Response`/`toApp*`, декораторы `ExtBusiness`/`Extension`)
   **сохраняются** — меняется только структура.
 - Проверка после каждого шага минимум: `go vet ./...` и `make test-only`; для шагов,
@@ -21,8 +22,8 @@
 - Статус на 2026-10-20: все шаги, кроме отменённых (f) и (i), выполнены и закоммичены в
   `refactor/go-standard-layout`. 2026-10-20 закрыты хвосты: обновление Go/`x/net`
   (vuln-check), безопасные 401, Q16 (`sys/auth` без импорта `usecase`), перенос
-  `cmd/metrics/{collector,publisher}`, `go_package` в `generated/authpb`. Открытым остаётся Q17
-  (вопрос ментору).
+  `cmd/metrics/{collector,publisher}`, `go_package` в `generated/authpb`. Затем выполнен шаг (j):
+  переход на доменную раскладку `internal/<domain>/`. Открытым остаётся Q17 (вопрос ментору).
 
 ---
 
@@ -34,10 +35,10 @@
 | `main.go` | ✅ тонкие, вызывают `internal/app/<svc>.Run` | тонкий `main`, вызывает `internal/app` | (a) ✅ |
 | Wiring / DI | ✅ `internal/app/{sales,auth,metrics}` (+ `routes*.go` с тегами `crud`/`reporting`) | `internal/app/app.go`, руками | (a) ✅ |
 | Конфиг | ✅ `internal/config/{sales,auth,metrics}/config.go` | `internal/config/config.go` | (a) ✅ |
-| Транспорт | `internal/handler/http/<x>/`, `internal/handler/grpc/auth/` | `internal/handler/{http,grpc}/` | ✅ (имена файлов — (b)) |
-| Бизнес-логика | `internal/usecase/<x>/` (+ `deps.go` уже есть) | `internal/usecase/<entity>/deps.go + <entity>.go` | ✅ (имена файлов — (b)) |
-| БД-слой | `internal/repository/<x>/` | `internal/repository/<entity>/<entity>_repository.go` | ✅ (имена файлов — (b)) |
-| Модели | `internal/models/<x>.go`, `internal/models/types/*` | `internal/models/` | ✅ |
+| Транспорт | `internal/handler/http/<x>/`, `internal/handler/grpc/auth/`; серверы — `internal/server/{http,grpc}` | `internal/handler/{http,grpc}/`, `internal/server/{http,grpc}` | ✅ (b), (j) |
+| Бизнес-логика | `internal/<x>/usecase/` (`deps.go` + `<x>.go`) | `internal/<domain>/usecase/deps.go + <domain>.go` | ✅ (b), (j) |
+| БД-слой | `internal/<x>/repository/` | `internal/<domain>/repository/<domain>_repository.go` | ✅ (b), (j) |
+| Модели | `internal/<x>/models/{<x>.go,query.go}`, общие типы `internal/types/*` | `internal/<domain>/models/`, `internal/types/` | ✅ (j) |
 | Имена файлов | ✅ переименованы | `<x>.go`, `<x>_repository.go`, `<x>_handler.go`, `dto.go`, `server.go` | (b) ✅ |
 | Ошибки | ✅ `errs.Error.Cause` (лог) + безопасное `Message` (клиент); 403 на отказ политики, 401 без деталей токена/OPA/БД | внутренняя причина (лог) + внешнее сообщение (клиент) | (h) ✅ |
 | Инфраструктура | ✅ `internal/sys/*` (+ `sys/metrics/{collector,publisher}` сервиса metrics) + `pkg/foundation/*`; `sys/auth` зависит от локального `UserLookup`, не от `usecase` | `pkg/foundation` остаётся общим кодом для `cmd/*` | (f) отменён; Q16 ✅ |
@@ -76,7 +77,7 @@
 
 ## Шаги
 
-Порядок по умолчанию: **(0) ✅ → gRPC ✅ → (a) → (b) → (b2) → (h) → (e) → (c) → (d) → (g)**.
+Порядок по умолчанию: **(0) ✅ → gRPC ✅ → (a) → (b) → (b2) → (h) → (e) → (c) → (d) → (g) → (j)**.
 (f) и (i) отменены 2026-10-18.
 (c), (d), (e), (g) мало связаны с Go-кодом и могут идти в другом порядке, но до (i).
 
@@ -341,6 +342,32 @@
 
 ---
 
+### (j) Доменная раскладка `internal/<domain>/` (как в `typespace`) — ✅ выполнено 2026-10-20
+
+> Решение пользователя 2026-10-20 (по образцу проекта ментора Германа `typespace`), план —
+> [`DOMAIN_LAYOUT_PLAN.md`](../DOMAIN_LAYOUT_PLAN.md). Стандарт переключён с Метода 1 на
+> Метод 2. Коммиты: `f7374179` (типы + модели), `519e9dd9` (usecase/repository + серверы),
+> затем коммит с документацией.
+
+- **Что:**
+  - `internal/models/types/*` → `internal/types/*`;
+  - `internal/models/<x>.go` (+ `<x>_query.go`, части `storer.go`/`errors.go`) →
+    `internal/<x>/models/{<x>.go,query.go}`; префиксы домена у типов убраны
+    (`UserStorer` → `usermodels.Storer`, `UserQueryFilter` → `QueryFilter`,
+    `ErrUserNotFound` → `ErrNotFound`, `VProduct` → `vproductmodels.Product`), тексты ошибок
+    не менялись;
+  - `internal/usecase/<x>` → `internal/<x>/usecase`, `internal/repository/<x>` →
+    `internal/<x>/repository`; имена пакетов = имена папок (`usecase`, `repository`,
+    `models`), алиасы импорта `<x>bus`, `<x>db`, `<x>models` сохраняют старые идентификаторы;
+  - `internal/handler/http/server` → `internal/server/http`; запуск/остановка gRPC-сервера
+    вынесены из `internal/handler/grpc/auth` в `internal/server/grpc` (`Start`/`Shutdown`),
+    `grpcauthapp.NewApp` экспортирован;
+  - документация (`AGENTS.md`, `golang_project_structure.md`, скиллы `.agents/skills/*`).
+- **Проверка:** `go vet ./...`, `make test-only`, `make compose-build-up`; живые запросы
+  через HTTP- и gRPC-клиента auth.
+
+---
+
 ## Открытые вопросы (пользователю / ментору Герману)
 
 1. **Q1.** Пока сервисы в одном репо: `internal/app/<svc>` + `internal/config/<svc>` — ок,
@@ -349,7 +376,7 @@
    заменяем конфигом или удаляем?
 3. **Q3.** Имена файлов при нескольких реализациях репозитория (`postgres/`, `sqlite/`,
    `cache/`): `product_repository.go` в каждой папке или `postgres.go`/`sqlite.go`?
-4. **Q4.** ✅ Пакеты уже `package user`/`audit`/…; алиасы импорта `userbus`/`userdb`/`userapp` и
+4. **Q4.** ✅ После шага (j) пакеты называются `package usecase`/`repository`/`models`; алиасы импорта `userbus`/`userdb`/`userapp` и
    имена `ExtBusiness`/`NewBusiness` **оставлены** (решение 2026-10-20 — не плодить шум в диффе).
 5. **Q5.** Куда `zarf/k8s` и `zarf/helm` — стандарт не описывает (`deploy/`?).
 6. **Q6.** `zarf/keys/*.pem` (dev-ключи JWT) — где хранить и коммитить ли вообще?
@@ -366,7 +393,7 @@
 15. **Q15.** Разделение репо с историей (`git filter-repo`) или чистый старт?
 16. **Q16.** ✅ Решено 2026-10-20: `internal/sys/auth` остаётся в `sys`, но зависит от локального
     интерфейса `auth.UserLookup` (`QueryByID`) вместо `userbus.ExtBusiness` и больше не импортирует
-    `internal/usecase/user`. `internal/sys/dbtest` остаётся на месте — это тестовый харнесс, ему
+    `internal/user/usecase`. `internal/sys/dbtest` остаётся на месте — это тестовый харнесс, ему
     нормально собирать все слои.
-17. **Q17.** Метод 1 + декораторы `ExtBusiness` + строгие типы — ментор подтверждает, что
+17. **Q17.** Метод 2 (доменная раскладка, шаг (j)) + декораторы `ExtBusiness` + строгие типы — ментор подтверждает, что
     это не противоречит стандарту (AGENTS.md трактует именно так)?

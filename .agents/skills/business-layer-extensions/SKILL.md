@@ -1,6 +1,6 @@
 ---
 name: business-layer-extensions
-description: Use when adding a cross-cutting concern (OTEL tracing, logging, metrics, caching, auth) to a usecase domain, creating files under internal/usecase/*/extensions/*, or adding the extension seam (ExtBusiness/Extension) to a usecase package.
+description: Use when adding a cross-cutting concern (OTEL tracing, logging, metrics, caching, auth) to a usecase domain, creating files under internal/<domain>/usecase/extensions/*, or adding the extension seam (ExtBusiness/Extension) to a usecase package.
 ---
 
 # Business Layer Extensions
@@ -15,15 +15,15 @@ It comes in three coordinated pieces: the **seam** on the bus (Piece 1), the
 
 ## Checklist
 
-1. **Seam exists?** Confirm the target `internal/usecase/<x>/<x>.go` has `ExtBusiness`, `Extension`,
+1. **Seam exists?** Confirm the target `internal/<x>/usecase/<x>.go` has `ExtBusiness`, `Extension`,
    and the reverse-apply loop in `NewBusiness`. If not, add them (piece 1).
-2. **Create** `internal/usecase/<x>/extensions/<x><concern>/<x><concern>.go` (piece 2).
+2. **Create** `internal/<x>/usecase/extensions/<x><concern>/<x><concern>.go` (piece 2).
 3. **Implement EVERY `ExtBusiness` method** — wrap the relevant ones, pass the rest
    straight through to `ext.bus`. Missing one fails to satisfy the interface and
    won't compile.
 4. **Wire** into `internal/app/<svc>/app.go` in the right order (piece 3).
 
-## Piece 1 — the seam (in `internal/usecase/<x>/<x>.go`)
+## Piece 1 — the seam (in `internal/<x>/usecase/<x>.go`)
 
 ```go
 // ExtBusiness lists every public method an extension can wrap.
@@ -47,7 +47,7 @@ func NewBusiness(log *logger.Logger, delegate *delegate.Delegate, storer Storer,
 }
 ```
 
-## Piece 2 — the extension (`internal/usecase/<x>/extensions/<x><concern>/<x><concern>.go`)
+## Piece 2 — the extension (`internal/<x>/usecase/extensions/<x><concern>/<x><concern>.go`)
 
 Package name is `<x><concern>` (e.g. `widgetotel`, `widgetlog`). Struct holds the
 wrapped bus plus any deps; `NewExtension` returns the closure.

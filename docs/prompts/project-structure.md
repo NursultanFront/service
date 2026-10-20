@@ -5,7 +5,8 @@
 > target.
 >
 > - **Standard (source of truth for structure):** [`golang_project_structure.md`](../../golang_project_structure.md)
->   — Method 1, layered: `handler` → `usecase` → `repository` + `models`.
+>   — Method 2, domain layout: `internal/<domain>/{models,usecase,repository}` + `internal/{handler,server,types}`
+>   (since 2026-10-20, see [`DOMAIN_LAYOUT_PLAN.md`](../../DOMAIN_LAYOUT_PLAN.md)).
 > - **Rules for agents and how the standard combines with code patterns:**
 >   [`AGENTS.md`](../../AGENTS.md), section *Project Structure & Architecture Standard*.
 > - **Step-by-step migration plan:** [`docs/MIGRATION_PLAN.md`](../../docs/MIGRATION_PLAN.md).
@@ -21,13 +22,13 @@ disk today; "target" = where the standard wants it after the migration plan is d
 
 | Old (Ardan Labs) | Current | Notes |
 |---|---|---|
-| `internal/business/domain/<x>bus/` | `internal/usecase/<x>/` | `<x>` = audit, home, product, user, vproduct. Core file `<x>bus.go` → `<x>.go` |
-| `internal/business/domain/<x>bus/extensions/*` | `internal/usecase/<x>/extensions/*` | ExtBusiness/Extension decorators |
-| `internal/business/domain/<x>bus/stores/<x>db/` | `internal/repository/<x>/` | `<x>db.go` → `<x>_repository.go`, `model.go` → `dto.go` |
-| `internal/business/domain/productbus/stores/productdb/` | `internal/repository/product/{common,postgres,sqlite}/` | |
-| `internal/business/domain/userbus/stores/usercache/` | `internal/repository/user/cache/` | |
-| `internal/business/domain/<x>bus/model.go` | `internal/models/<x>.go` | |
-| `internal/business/types/*` | `internal/models/types/*` | domain, home, money, name, password, quantity, role |
+| `internal/business/domain/<x>bus/` | `internal/<x>/usecase/` | `<x>` = audit, home, product, user, vproduct. Core file `<x>bus.go` → `<x>.go` |
+| `internal/business/domain/<x>bus/extensions/*` | `internal/<x>/usecase/extensions/*` | ExtBusiness/Extension decorators |
+| `internal/business/domain/<x>bus/stores/<x>db/` | `internal/<x>/repository/` | `<x>db.go` → `<x>_repository.go`, `model.go` → `dto.go` |
+| `internal/business/domain/productbus/stores/productdb/` | `internal/product/repository/{common,postgres,sqlite}/` | |
+| `internal/business/domain/userbus/stores/usercache/` | `internal/user/repository/cache/` | |
+| `internal/business/domain/<x>bus/model.go` | `internal/<x>/models/<x>.go` | |
+| `internal/business/types/*` | `internal/types/*` | domain, home, money, name, password, quantity, role |
 | `internal/business/sdk/sqldb` | `internal/sys/db` | incl. `dbarray`, `dialect` |
 | `internal/business/sdk/migrate` | `internal/sys/db/migrate` (golang-migrate runner) | SQL in `db/migrations` + `db/fixtures`, embedded by package `db` |
 | `internal/business/sdk/dbtest` | `internal/sys/dbtest` | |
@@ -44,7 +45,7 @@ disk today; "target" = where the standard wants it after the migration plan is d
 | `internal/app/domain/<x>app/` | `internal/handler/http/<x>/` | audit, auth, check, home, oauth, product, raw, tran, user, vproduct. `<x>app.go` → `<x>_handler.go`, `model.go` → `dto.go` |
 | `internal/app/domain/grpcauthapp/` | `internal/handler/grpc/auth/` | generated code → `internal/generated/authpb/`, `.proto` → `api/protobuf/authapp.proto` |
 | `internal/app/sdk/mid` | `internal/handler/http/mid` | |
-| `internal/app/sdk/mux` | `internal/handler/http/server` | `mux.go` → `server.go` |
+| `internal/app/sdk/mux` | `internal/server/http` | `mux.go` → `server.go` |
 | `internal/app/sdk/apitest` | `internal/handler/http/apitest` | |
 | `internal/app/sdk/query` | `internal/handler/http/query` | |
 | `internal/app/sdk/errs` | `internal/errors` | target: internal cause + safe external message |
