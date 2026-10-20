@@ -4,8 +4,8 @@ package sales
 
 import (
 	checkapp "github.com/ardanlabs/service/internal/handler/http/check"
-	mux "github.com/ardanlabs/service/internal/handler/http/server"
 	vproductapp "github.com/ardanlabs/service/internal/handler/http/vproduct"
+	mux "github.com/ardanlabs/service/internal/server/http"
 	"github.com/ardanlabs/service/pkg/foundation/web"
 )
 

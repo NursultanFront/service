@@ -8,9 +8,9 @@ import (
 	errs "github.com/ardanlabs/service/internal/errors"
 	"github.com/ardanlabs/service/internal/handler/http/mid"
 	"github.com/ardanlabs/service/internal/handler/http/query"
+	productbus "github.com/ardanlabs/service/internal/product/usecase"
 	"github.com/ardanlabs/service/internal/sys/order"
 	"github.com/ardanlabs/service/internal/sys/page"
-	productbus "github.com/ardanlabs/service/internal/usecase/product"
 	"github.com/ardanlabs/service/pkg/foundation/web"
 )
 

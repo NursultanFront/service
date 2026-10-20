@@ -13,7 +13,7 @@ import (
 	"github.com/ardanlabs/service/internal/service/authclient"
 	"github.com/ardanlabs/service/internal/sys/auth"
 	"github.com/ardanlabs/service/internal/types/role"
-	userbus "github.com/ardanlabs/service/internal/usecase/user"
+	userbus "github.com/ardanlabs/service/internal/user/usecase"
 	"github.com/ardanlabs/service/pkg/foundation/web"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"

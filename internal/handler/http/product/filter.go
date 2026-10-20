@@ -5,8 +5,8 @@ import (
 	"strconv"
 
 	errs "github.com/ardanlabs/service/internal/errors"
+	productbus "github.com/ardanlabs/service/internal/product/usecase"
 	"github.com/ardanlabs/service/internal/types/name"
-	productbus "github.com/ardanlabs/service/internal/usecase/product"
 	"github.com/google/uuid"
 )
 

@@ -8,10 +8,10 @@ import (
 	homeapp "github.com/ardanlabs/service/internal/handler/http/home"
 	productapp "github.com/ardanlabs/service/internal/handler/http/product"
 	rawapp "github.com/ardanlabs/service/internal/handler/http/raw"
-	mux "github.com/ardanlabs/service/internal/handler/http/server"
 	tranapp "github.com/ardanlabs/service/internal/handler/http/tran"
 	userapp "github.com/ardanlabs/service/internal/handler/http/user"
 	vproductapp "github.com/ardanlabs/service/internal/handler/http/vproduct"
+	mux "github.com/ardanlabs/service/internal/server/http"
 	"github.com/ardanlabs/service/pkg/foundation/web"
 )
 

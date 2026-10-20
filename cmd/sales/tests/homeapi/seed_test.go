@@ -5,11 +5,11 @@ import (
 	"fmt"
 
 	"github.com/ardanlabs/service/internal/handler/http/apitest"
+	homebus "github.com/ardanlabs/service/internal/home/usecase"
 	"github.com/ardanlabs/service/internal/sys/auth"
 	"github.com/ardanlabs/service/internal/sys/dbtest"
 	"github.com/ardanlabs/service/internal/types/role"
-	homebus "github.com/ardanlabs/service/internal/usecase/home"
-	userbus "github.com/ardanlabs/service/internal/usecase/user"
+	userbus "github.com/ardanlabs/service/internal/user/usecase"
 )
 
 func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, error) {

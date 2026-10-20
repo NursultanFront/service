@@ -4,9 +4,9 @@ import (
 	"net/http"
 
 	"github.com/ardanlabs/service/internal/handler/http/mid"
+	homebus "github.com/ardanlabs/service/internal/home/usecase"
 	"github.com/ardanlabs/service/internal/service/authclient"
 	"github.com/ardanlabs/service/internal/sys/auth"
-	homebus "github.com/ardanlabs/service/internal/usecase/home"
 	"github.com/ardanlabs/service/pkg/foundation/logger"
 	"github.com/ardanlabs/service/pkg/foundation/web"
 )

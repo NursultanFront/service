@@ -1,0 +1,104 @@
+// Package productotel provides an extension for productbus that adds
+// otel tracking.
+package productotel
+
+import (
+	"context"
+
+	productmodels "github.com/ardanlabs/service/internal/product/models"
+
+	productbus "github.com/ardanlabs/service/internal/product/usecase"
+	sqldb "github.com/ardanlabs/service/internal/sys/db"
+	"github.com/ardanlabs/service/internal/sys/order"
+	"github.com/ardanlabs/service/internal/sys/page"
+	"github.com/ardanlabs/service/pkg/foundation/otel"
+	"github.com/google/uuid"
+)
+
+// Extension provides a wrapper for otel functionality around the productbus.
+type Extension struct {
+	bus productbus.ExtBusiness
+}
+
+// NewExtension constructs a new extension that wraps the productbus with otel.
+func NewExtension() productbus.Extension {
+	return func(bus productbus.ExtBusiness) productbus.ExtBusiness {
+		return &Extension{
+			bus: bus,
+		}
+	}
+}
+
+// NewWithTx does not apply otel.
+func (ext *Extension) NewWithTx(tx sqldb.CommitRollbacker) (productbus.ExtBusiness, error) {
+	return ext.bus.NewWithTx(tx)
+}
+
+// Create applies otel to the product creation process.
+func (ext *Extension) Create(ctx context.Context, np productmodels.NewProduct) (productmodels.Product, error) {
+	ctx, span := otel.AddSpan(ctx, "business.productbus.create")
+	defer span.End()
+
+	usr, err := ext.bus.Create(ctx, np)
+	if err != nil {
+		return productmodels.Product{}, err
+	}
+
+	return usr, nil
+}
+
+// Update applies otel to the product update process.
+func (ext *Extension) Update(ctx context.Context, prd productmodels.Product, up productmodels.UpdateProduct) (productmodels.Product, error) {
+	ctx, span := otel.AddSpan(ctx, "business.productbus.update")
+	defer span.End()
+
+	usr, err := ext.bus.Update(ctx, prd, up)
+	if err != nil {
+		return productmodels.Product{}, err
+	}
+
+	return usr, nil
+}
+
+// Delete applies otel to the product deletion process.
+func (ext *Extension) Delete(ctx context.Context, prd productmodels.Product) error {
+	ctx, span := otel.AddSpan(ctx, "business.productbus.delete")
+	defer span.End()
+
+	if err := ext.bus.Delete(ctx, prd); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Query applies otel to the product query process.
+func (ext *Extension) Query(ctx context.Context, filter productbus.QueryFilter, orderBy order.By, page page.Page) ([]productmodels.Product, error) {
+	ctx, span := otel.AddSpan(ctx, "business.productbus.query")
+	defer span.End()
+
+	return ext.bus.Query(ctx, filter, orderBy, page)
+}
+
+// Count applies otel to the product count process.
+func (ext *Extension) Count(ctx context.Context, filter productbus.QueryFilter) (int, error) {
+	ctx, span := otel.AddSpan(ctx, "business.productbus.count")
+	defer span.End()
+
+	return ext.bus.Count(ctx, filter)
+}
+
+// QueryByID applies otel to the product query by ID process.
+func (ext *Extension) QueryByID(ctx context.Context, userID uuid.UUID) (productmodels.Product, error) {
+	ctx, span := otel.AddSpan(ctx, "business.productbus.querybyid")
+	defer span.End()
+
+	return ext.bus.QueryByID(ctx, userID)
+}
+
+func (ext *Extension) QueryByUserID(ctx context.Context, userID uuid.UUID) ([]productmodels.Product, error) {
+	ctx, span := otel.AddSpan(ctx, "business.productbus.querybyuserid")
+	defer span.End()
+
+	return ext.bus.QueryByUserID(ctx, userID)
+}

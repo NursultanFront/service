@@ -1,7 +1,7 @@
 package user
 
 import (
-	userbus "github.com/ardanlabs/service/internal/usecase/user"
+	userbus "github.com/ardanlabs/service/internal/user/usecase"
 )
 
 var orderByFields = map[string]string{

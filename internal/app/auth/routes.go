@@ -3,7 +3,7 @@ package auth
 import (
 	authapp "github.com/ardanlabs/service/internal/handler/http/auth"
 	checkapp "github.com/ardanlabs/service/internal/handler/http/check"
-	mux "github.com/ardanlabs/service/internal/handler/http/server"
+	mux "github.com/ardanlabs/service/internal/server/http"
 	"github.com/ardanlabs/service/pkg/foundation/web"
 )
 

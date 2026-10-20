@@ -8,11 +8,11 @@ import (
 	"time"
 
 	errs "github.com/ardanlabs/service/internal/errors"
+	homebus "github.com/ardanlabs/service/internal/home/usecase"
+	productbus "github.com/ardanlabs/service/internal/product/usecase"
 	"github.com/ardanlabs/service/internal/service/authclient"
 	"github.com/ardanlabs/service/internal/sys/auth"
-	homebus "github.com/ardanlabs/service/internal/usecase/home"
-	productbus "github.com/ardanlabs/service/internal/usecase/product"
-	userbus "github.com/ardanlabs/service/internal/usecase/user"
+	userbus "github.com/ardanlabs/service/internal/user/usecase"
 	"github.com/ardanlabs/service/pkg/foundation/web"
 	"github.com/google/uuid"
 )

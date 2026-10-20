@@ -6,7 +6,7 @@ import (
 	"github.com/ardanlabs/service/internal/handler/http/mid"
 	"github.com/ardanlabs/service/internal/service/authclient"
 	"github.com/ardanlabs/service/internal/sys/auth"
-	userbus "github.com/ardanlabs/service/internal/usecase/user"
+	userbus "github.com/ardanlabs/service/internal/user/usecase"
 	"github.com/ardanlabs/service/pkg/foundation/logger"
 	"github.com/ardanlabs/service/pkg/foundation/web"
 )

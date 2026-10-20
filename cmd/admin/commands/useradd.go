@@ -8,12 +8,12 @@ import (
 
 	usermodels "github.com/ardanlabs/service/internal/user/models"
 
-	userdb "github.com/ardanlabs/service/internal/repository/user"
 	sqldb "github.com/ardanlabs/service/internal/sys/db"
 	"github.com/ardanlabs/service/internal/types/name"
 	"github.com/ardanlabs/service/internal/types/password"
 	"github.com/ardanlabs/service/internal/types/role"
-	userbus "github.com/ardanlabs/service/internal/usecase/user"
+	userdb "github.com/ardanlabs/service/internal/user/repository"
+	userbus "github.com/ardanlabs/service/internal/user/usecase"
 	"github.com/ardanlabs/service/pkg/foundation/logger"
 	"github.com/google/uuid"
 )

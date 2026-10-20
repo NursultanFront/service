@@ -4,11 +4,11 @@ import (
 	"net/http"
 
 	"github.com/ardanlabs/service/internal/handler/http/mid"
+	productbus "github.com/ardanlabs/service/internal/product/usecase"
 	"github.com/ardanlabs/service/internal/service/authclient"
 	"github.com/ardanlabs/service/internal/sys/auth"
 	sqldb "github.com/ardanlabs/service/internal/sys/db"
-	productbus "github.com/ardanlabs/service/internal/usecase/product"
-	userbus "github.com/ardanlabs/service/internal/usecase/user"
+	userbus "github.com/ardanlabs/service/internal/user/usecase"
 	"github.com/ardanlabs/service/pkg/foundation/logger"
 	"github.com/ardanlabs/service/pkg/foundation/web"
 	"github.com/jmoiron/sqlx"

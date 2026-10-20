@@ -1,7 +1,7 @@
 package product
 
 import (
-	productbus "github.com/ardanlabs/service/internal/usecase/product"
+	productbus "github.com/ardanlabs/service/internal/product/usecase"
 )
 
 var orderByFields = map[string]string{

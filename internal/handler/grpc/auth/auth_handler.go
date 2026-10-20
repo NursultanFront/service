@@ -5,13 +5,12 @@ import (
 	"context"
 	"errors"
 	"math"
-	"net"
 	"time"
 
 	"github.com/ardanlabs/service/internal/generated/authpb"
 	"github.com/ardanlabs/service/internal/handler/http/mid"
 	"github.com/ardanlabs/service/internal/sys/auth"
-	userbus "github.com/ardanlabs/service/internal/usecase/user"
+	userbus "github.com/ardanlabs/service/internal/user/usecase"
 	"github.com/ardanlabs/service/pkg/foundation/logger"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -21,29 +20,32 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// App represents the gRPC service for authentication.
+// Config holds the dependencies for the gRPC auth service.
+type Config struct {
+	Log     *logger.Logger
+	Auth    *auth.Auth
+	UserBus userbus.ExtBusiness
+}
+
+// App represents the gRPC service for authentication. Starting and stopping
+// the gRPC server lives in internal/server/grpc.
 type App struct {
 	authpb.UnimplementedAuthServer
 	log     *logger.Logger
 	auth    *auth.Auth
-	lis     net.Listener
 	userBus userbus.ExtBusiness
-	gs      *grpc.Server
 }
 
-func newApp(cfg Config) *App {
+// NewApp constructs the gRPC auth service.
+//
+// NOTE(AI): exported (was newApp) by Claude by direct request, so the server
+// lifecycle can move to internal/server/grpc (DOMAIN_LAYOUT_PLAN.md step 2).
+func NewApp(cfg Config) *App {
 	return &App{
 		log:     cfg.Log,
 		auth:    cfg.Auth,
-		lis:     cfg.Listener,
 		userBus: cfg.UserBus,
 	}
-}
-
-// Shutdown stops the gRPC service.
-func (a *App) Shutdown() {
-	a.log.Info(context.Background(), "shutdown", "status", "gRPC server stopped")
-	a.gs.GracefulStop()
 }
 
 // Token generates a token for a given key ID.
@@ -53,7 +55,7 @@ func (a *App) Token(ctx context.Context, req *authpb.TokenRequest) (*authpb.Toke
 		return nil, status.Error(codes.InvalidArgument, "kid is required")
 	}
 
-	// NOTE(AI): the authInterceptor validated the Basic auth credentials and
+	// NOTE(AI): the AuthInterceptor validated the Basic auth credentials and
 	// stored the user's real claims (subject, roles, expiry), same as HTTP.
 	claims := mid.GetClaims(ctx)
 	if claims.Subject == "" {
@@ -160,7 +162,7 @@ func (a *App) Authorize(ctx context.Context, req *authpb.AuthorizeRequest) (*aut
 
 // =============================================================================
 
-func (a *App) authInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+func (a *App) AuthInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	// NOTE(AI): match the generated full method names; the proto package is
 	// grpcauthapp, so the old "/auth.Auth/..." literals never matched and the
 	// interceptor was a no-op. Authenticate is intentionally not intercepted:

@@ -6,7 +6,7 @@ import (
 
 	errs "github.com/ardanlabs/service/internal/errors"
 	"github.com/ardanlabs/service/internal/types/name"
-	vproductbus "github.com/ardanlabs/service/internal/usecase/vproduct"
+	vproductbus "github.com/ardanlabs/service/internal/vproduct/usecase"
 	"github.com/google/uuid"
 )
 

@@ -7,10 +7,10 @@ import (
 	"os"
 	"time"
 
-	userdb "github.com/ardanlabs/service/internal/repository/user"
 	sqldb "github.com/ardanlabs/service/internal/sys/db"
 	"github.com/ardanlabs/service/internal/sys/page"
-	userbus "github.com/ardanlabs/service/internal/usecase/user"
+	userdb "github.com/ardanlabs/service/internal/user/repository"
+	userbus "github.com/ardanlabs/service/internal/user/usecase"
 	"github.com/ardanlabs/service/pkg/foundation/logger"
 )
 

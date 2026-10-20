@@ -3,10 +3,10 @@ package audit
 import (
 	"net/http"
 
+	auditbus "github.com/ardanlabs/service/internal/audit/usecase"
 	"github.com/ardanlabs/service/internal/handler/http/mid"
 	"github.com/ardanlabs/service/internal/service/authclient"
 	"github.com/ardanlabs/service/internal/sys/auth"
-	auditbus "github.com/ardanlabs/service/internal/usecase/audit"
 	"github.com/ardanlabs/service/pkg/foundation/logger"
 	"github.com/ardanlabs/service/pkg/foundation/web"
 )

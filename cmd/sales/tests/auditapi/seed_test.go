@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 
+	auditbus "github.com/ardanlabs/service/internal/audit/usecase"
 	"github.com/ardanlabs/service/internal/handler/http/apitest"
 	"github.com/ardanlabs/service/internal/sys/auth"
 	"github.com/ardanlabs/service/internal/sys/dbtest"
 	"github.com/ardanlabs/service/internal/types/domain"
 	"github.com/ardanlabs/service/internal/types/role"
-	auditbus "github.com/ardanlabs/service/internal/usecase/audit"
-	userbus "github.com/ardanlabs/service/internal/usecase/user"
+	userbus "github.com/ardanlabs/service/internal/user/usecase"
 )
 
 func insertSeedData(db *dbtest.Database, ath *auth.Auth) (apitest.SeedData, error) {

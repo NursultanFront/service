@@ -7,11 +7,11 @@ import (
 	"os"
 	"time"
 
-	userdb "github.com/ardanlabs/service/internal/repository/user"
 	"github.com/ardanlabs/service/internal/sys/auth"
 	sqldb "github.com/ardanlabs/service/internal/sys/db"
 	"github.com/ardanlabs/service/internal/types/role"
-	userbus "github.com/ardanlabs/service/internal/usecase/user"
+	userdb "github.com/ardanlabs/service/internal/user/repository"
+	userbus "github.com/ardanlabs/service/internal/user/usecase"
 	"github.com/ardanlabs/service/pkg/foundation/keystore"
 	"github.com/ardanlabs/service/pkg/foundation/logger"
 	"github.com/golang-jwt/jwt/v5"

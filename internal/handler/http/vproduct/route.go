@@ -6,8 +6,8 @@ import (
 	"github.com/ardanlabs/service/internal/handler/http/mid"
 	"github.com/ardanlabs/service/internal/service/authclient"
 	"github.com/ardanlabs/service/internal/sys/auth"
-	userbus "github.com/ardanlabs/service/internal/usecase/user"
-	vproductbus "github.com/ardanlabs/service/internal/usecase/vproduct"
+	userbus "github.com/ardanlabs/service/internal/user/usecase"
+	vproductbus "github.com/ardanlabs/service/internal/vproduct/usecase"
 	"github.com/ardanlabs/service/pkg/foundation/logger"
 	"github.com/ardanlabs/service/pkg/foundation/web"
 )

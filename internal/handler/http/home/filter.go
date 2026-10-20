@@ -5,8 +5,8 @@ import (
 	"time"
 
 	errs "github.com/ardanlabs/service/internal/errors"
+	homebus "github.com/ardanlabs/service/internal/home/usecase"
 	"github.com/ardanlabs/service/internal/types/home"
-	homebus "github.com/ardanlabs/service/internal/usecase/home"
 	"github.com/google/uuid"
 )
 

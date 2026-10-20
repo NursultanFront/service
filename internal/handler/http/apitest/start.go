@@ -6,7 +6,7 @@ import (
 
 	authapp "github.com/ardanlabs/service/internal/app/auth"
 	salesapp "github.com/ardanlabs/service/internal/app/sales"
-	mux "github.com/ardanlabs/service/internal/handler/http/server"
+	mux "github.com/ardanlabs/service/internal/server/http"
 	"github.com/ardanlabs/service/internal/service/authclient/http"
 	"github.com/ardanlabs/service/internal/sys/auth"
 	"github.com/ardanlabs/service/internal/sys/dbtest"

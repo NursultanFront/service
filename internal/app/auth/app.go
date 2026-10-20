@@ -17,15 +17,16 @@ import (
 	"github.com/ardanlabs/conf/v3"
 	authcfg "github.com/ardanlabs/service/internal/config/auth"
 	grpcauthapp "github.com/ardanlabs/service/internal/handler/grpc/auth"
-	mux "github.com/ardanlabs/service/internal/handler/http/server"
-	userdb "github.com/ardanlabs/service/internal/repository/user"
-	usercache "github.com/ardanlabs/service/internal/repository/user/cache"
+	grpcserver "github.com/ardanlabs/service/internal/server/grpc"
+	mux "github.com/ardanlabs/service/internal/server/http"
 	"github.com/ardanlabs/service/internal/sys/auth"
 	sqldb "github.com/ardanlabs/service/internal/sys/db"
 	"github.com/ardanlabs/service/internal/sys/debug"
 	"github.com/ardanlabs/service/internal/sys/delegate"
 	"github.com/ardanlabs/service/internal/sys/rediscache"
-	userbus "github.com/ardanlabs/service/internal/usecase/user"
+	userdb "github.com/ardanlabs/service/internal/user/repository"
+	usercache "github.com/ardanlabs/service/internal/user/repository/cache"
+	userbus "github.com/ardanlabs/service/internal/user/usecase"
 	"github.com/ardanlabs/service/pkg/foundation/keystore"
 	"github.com/ardanlabs/service/pkg/foundation/logger"
 	"github.com/ardanlabs/service/pkg/foundation/otel"
@@ -246,12 +247,13 @@ func run(ctx context.Context, log *logger.Logger, tag string) error {
 		return fmt.Errorf("failed to listen on host %s : %w", cfg.Web.GRPCHost, err)
 	}
 
-	grpcService := grpcauthapp.Start(ctx, grpcauthapp.Config{
-		Log:      log,
-		Auth:     ath,
-		Listener: lis,
-		UserBus:  userBus,
+	grpcAPI := grpcauthapp.NewApp(grpcauthapp.Config{
+		Log:     log,
+		Auth:    ath,
+		UserBus: userBus,
 	})
+
+	grpcService := grpcserver.Start(ctx, log, lis, grpcAPI)
 
 	defer grpcService.Shutdown()
 

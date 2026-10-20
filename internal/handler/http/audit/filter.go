@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"time"
 
+	auditbus "github.com/ardanlabs/service/internal/audit/usecase"
 	errs "github.com/ardanlabs/service/internal/errors"
 	"github.com/ardanlabs/service/internal/types/domain"
 	"github.com/ardanlabs/service/internal/types/name"
-	auditbus "github.com/ardanlabs/service/internal/usecase/audit"
 	"github.com/google/uuid"
 )
 

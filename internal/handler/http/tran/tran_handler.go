@@ -8,8 +8,8 @@ import (
 
 	errs "github.com/ardanlabs/service/internal/errors"
 	"github.com/ardanlabs/service/internal/handler/http/mid"
-	productbus "github.com/ardanlabs/service/internal/usecase/product"
-	userbus "github.com/ardanlabs/service/internal/usecase/user"
+	productbus "github.com/ardanlabs/service/internal/product/usecase"
+	userbus "github.com/ardanlabs/service/internal/user/usecase"
 	"github.com/ardanlabs/service/pkg/foundation/web"
 )
 

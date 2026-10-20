@@ -1,6 +1,6 @@
 package audit
 
-import auditbus "github.com/ardanlabs/service/internal/usecase/audit"
+import auditbus "github.com/ardanlabs/service/internal/audit/usecase"
 
 var orderByFields = map[string]string{
 	"obj_id":     auditbus.OrderByObjID,

@@ -5,11 +5,11 @@ import (
 	"context"
 	"net/http"
 
+	auditbus "github.com/ardanlabs/service/internal/audit/usecase"
 	errs "github.com/ardanlabs/service/internal/errors"
 	"github.com/ardanlabs/service/internal/handler/http/query"
 	"github.com/ardanlabs/service/internal/sys/order"
 	"github.com/ardanlabs/service/internal/sys/page"
-	auditbus "github.com/ardanlabs/service/internal/usecase/audit"
 	"github.com/ardanlabs/service/pkg/foundation/web"
 )
 

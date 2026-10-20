@@ -7,9 +7,9 @@ import (
 	checkapp "github.com/ardanlabs/service/internal/handler/http/check"
 	homeapp "github.com/ardanlabs/service/internal/handler/http/home"
 	productapp "github.com/ardanlabs/service/internal/handler/http/product"
-	mux "github.com/ardanlabs/service/internal/handler/http/server"
 	tranapp "github.com/ardanlabs/service/internal/handler/http/tran"
 	userapp "github.com/ardanlabs/service/internal/handler/http/user"
+	mux "github.com/ardanlabs/service/internal/server/http"
 	"github.com/ardanlabs/service/pkg/foundation/web"
 )
 

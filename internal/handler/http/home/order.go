@@ -1,7 +1,7 @@
 package home
 
 import (
-	homebus "github.com/ardanlabs/service/internal/usecase/home"
+	homebus "github.com/ardanlabs/service/internal/home/usecase"
 )
 
 var orderByFields = map[string]string{

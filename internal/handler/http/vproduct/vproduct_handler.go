@@ -9,7 +9,7 @@ import (
 	"github.com/ardanlabs/service/internal/handler/http/query"
 	"github.com/ardanlabs/service/internal/sys/order"
 	"github.com/ardanlabs/service/internal/sys/page"
-	vproductbus "github.com/ardanlabs/service/internal/usecase/vproduct"
+	vproductbus "github.com/ardanlabs/service/internal/vproduct/usecase"
 	"github.com/ardanlabs/service/pkg/foundation/web"
 )
 
