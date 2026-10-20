@@ -19,6 +19,15 @@ import (
 	"github.com/google/uuid"
 )
 
+// Safe client-facing messages for 401 responses. The real cause (token parsing,
+// OPA evaluation, database lookups) is kept in errs.Error.Cause and only logged.
+//
+// NOTE(AI): added by Claude by direct request (migration plan step (h) remainder).
+const (
+	msgInvalidToken       = "invalid or missing token"
+	msgInvalidCredentials = "invalid credentials"
+)
+
 // Authenticate is a middleware function that integrates with an authentication client
 // to validate user credentials and attach user data to the request context.
 func Authenticate(client authclient.Authenticator) web.MidFunc {
@@ -29,7 +38,7 @@ func Authenticate(client authclient.Authenticator) web.MidFunc {
 
 			resp, err := client.Authenticate(ctx, authorizationHeader(r))
 			if err != nil {
-				return errs.New(errs.Unauthenticated, err)
+				return errs.Wrap(errs.Unauthenticated, err, msgInvalidToken)
 			}
 
 			ctx = setUserID(ctx, resp.UserID)
@@ -82,7 +91,7 @@ func Bearer(ath *auth.Auth) web.MidFunc {
 func HandleAuthentication(ctx context.Context, ath *auth.Auth, authorizationHeader string) (context.Context, *errs.Error) {
 	claims, err := ath.Authenticate(ctx, authorizationHeader)
 	if err != nil {
-		return ctx, errs.New(errs.Unauthenticated, err)
+		return ctx, errs.Wrap(errs.Unauthenticated, err, msgInvalidToken)
 	}
 
 	if claims.Subject == "" {
@@ -127,12 +136,12 @@ func HandleAuthorization(ctx context.Context, authorizationHeader string, userBu
 
 	addr, err := mail.ParseAddress(email)
 	if err != nil {
-		return ctx, errs.New(errs.Unauthenticated, err)
+		return ctx, errs.Wrap(errs.Unauthenticated, err, msgInvalidCredentials)
 	}
 
 	usr, err := userBus.Authenticate(ctx, *addr, pass)
 	if err != nil {
-		return ctx, errs.New(errs.Unauthenticated, err)
+		return ctx, errs.Wrap(errs.Unauthenticated, err, msgInvalidCredentials)
 	}
 
 	claims := auth.Claims{
