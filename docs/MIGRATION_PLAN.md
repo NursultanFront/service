@@ -18,9 +18,11 @@
   (разделение на репозитории) и шаг **(f)** (`pkg/foundation` → `internal/sys`) **отменены**:
   сервисы остаются в одном репо как `cmd/<svc>`, `pkg/foundation` — общий код для всех
   `cmd/*`. Добавлен шаг **(b2)**: `repository` перестаёт импортировать `usecase`.
-- Статус на 2026-10-18: ветка `refactor/go-standard-layout` уже частично перестроена
-  (`internal/{handler,usecase,repository,models,service,sys,errors,generated}`,
-  `api/protobuf`, `pkg/foundation`), изменения ещё не закоммичены.
+- Статус на 2026-10-20: все шаги, кроме отменённых (f) и (i), выполнены и закоммичены в
+  `refactor/go-standard-layout`. 2026-10-20 закрыты хвосты: обновление Go/`x/net`
+  (vuln-check), безопасные 401, Q16 (`sys/auth` без импорта `usecase`), перенос
+  `cmd/metrics/{collector,publisher}`, `go_package` в `generated/authpb`. Открытым остаётся Q17
+  (вопрос ментору).
 
 ---
 
@@ -37,12 +39,13 @@
 | БД-слой | `internal/repository/<x>/` | `internal/repository/<entity>/<entity>_repository.go` | ✅ (имена файлов — (b)) |
 | Модели | `internal/models/<x>.go`, `internal/models/types/*` | `internal/models/` | ✅ |
 | Имена файлов | ✅ переименованы | `<x>.go`, `<x>_repository.go`, `<x>_handler.go`, `dto.go`, `server.go` | (b) ✅ |
-| Ошибки | `internal/errors` (`errs.go`, `codes.go`): код + сообщение | внутренняя причина (лог) + внешнее сообщение (клиент) | (h) |
-| Инфраструктура | `internal/sys/*` + `pkg/foundation/*` (logger, web, otel, keystore, worker, docker) | `pkg/foundation` остаётся общим кодом для `cmd/*` | (f) отменён |
-| Контракты | ✅ `api/protobuf/authapp.proto`, фронтенд в `frontend/admin` | `api/` — только `.proto`/OpenAPI | (g) ✅ |
+| Ошибки | ✅ `errs.Error.Cause` (лог) + безопасное `Message` (клиент); 403 на отказ политики, 401 без деталей токена/OPA/БД | внутренняя причина (лог) + внешнее сообщение (клиент) | (h) ✅ |
+| Инфраструктура | ✅ `internal/sys/*` (+ `sys/metrics/{collector,publisher}` сервиса metrics) + `pkg/foundation/*`; `sys/auth` зависит от локального `UserLookup`, не от `usecase` | `pkg/foundation` остаётся общим кодом для `cmd/*` | (f) отменён; Q16 ✅ |
+| Go / уязвимости | ✅ Go 1.27.2, `golang.org/x/net` v0.60.0, Dockerfile'ы и CI закреплены; `make vuln-check` — 0 уязвимостей в коде | — | ✅ 2026-10-20 |
+| Контракты | ✅ `api/protobuf/authapp.proto`, фронтенд в `frontend/admin`; `go_package` во встроенном дескрипторе `generated/authpb` указывает на новый путь | `api/` — только `.proto`/OpenAPI | (g) ✅ |
 | Деплой/инфра | ✅ `docker/`, `deploy/{k8s,helm,keys}`, `docs/prompts`, `docker-compose.yaml` + `.env.example` | `docker/`, `docker-compose.yaml` + `.env.example` в корне, `docs/`, `scripts/` | (c) ✅ |
 | Миграции БД | ✅ golang-migrate, `db/migrations` + `db/fixtures` | `db/migrations/NNNNNN_*.up/down.sql`, `db/fixtures/*.sql` | (d) ✅ |
-| Dev-тулзы | `go install …@latest` в `makefile` (staticcheck, govulncheck, goimports, protoc-gen-go…) | `tools/` (свой `go.mod`, `tools.go`) → `bin/` | (e) |
+| Dev-тулзы | ✅ `tools/go.mod` (`tool`-директивы) → `make tools` → `bin/` | `tools/` (свой `go.mod`, `tools.go`) → `bin/` | (e) ✅ |
 | Фоновые процессы | нет `internal/workers` | `internal/workers/` при появлении | — |
 
 ### ✅ gRPC-фиксы авторизации — перенесены 2026-10-18
@@ -91,8 +94,8 @@
 > Решения: Q1 — `internal/app/<svc>` + `internal/config/<svc>`; Q2 — build-теги сохранены
 > (`internal/app/sales/routes_{all,crud,reporting}.go`); охват — sales, auth, metrics (CLI
 > `admin`/`logfmt` не трогали). `//go:embed static` остался в `cmd/sales` и передаётся в `Run`.
-> Остаток: `cmd/metrics/{collector,publisher}` — код сервиса внутри `cmd/`, кандидат на перенос в
-> `internal/` отдельным шагом.
+> Остаток закрыт 2026-10-20: `cmd/metrics/{collector,publisher}` → `internal/sys/metrics/{collector,publisher}`,
+> в `cmd/metrics/` остался только тонкий `main.go`.
 
 - **Цель:** правило 1 стандарта — `main` только создаёт контекст и вызывает `app.Run(ctx)`.
 - **Что переносится:**
@@ -215,8 +218,10 @@
 > `make tools` → `bin/` (в `.gitignore`), `make tools-upgrade`. Таргеты `fmt`/`lint`/`vuln-check`/
 > метрики/нагрузка/`authapp-proto-gen` зовут `$(BIN)/<tool>`; `lint`/`vuln-check` исключают
 > `node_modules` (`make lint` теперь зелёный). `migrate` добавится в (d).
-> **Найдено:** `make vuln-check` падает и до шага — 12 уязвимостей stdlib Go 1.27.0 (исправлены в
-> go1.27.2) и `golang.org/x/net` (исправлено в v0.60.0); требует обновления toolchain — отдельно.
+> **Найдено:** `make vuln-check` падал и до шага — 12 уязвимостей stdlib Go 1.27.0 и
+> `golang.org/x/net`. **Исправлено 2026-10-20:** `go 1.27.2` в `go.mod`/`tools/go.mod`, `x/net` v0.60.0,
+> `golang:1.27.2` в Dockerfile'ах, Go 1.27.2 в CircleCI. Остался только GO-2026-5932
+> (`x/crypto/openpgp` заброшен, фикса нет) — код его не вызывает.
 
 - **Цель:** правило 3 стандарта — тулзы зафиксированы версиями.
 - **Что:** `tools/go.mod`, `tools/tools.go` (blank-imports или `tool`-директивы Go 1.24+)
@@ -271,9 +276,9 @@
 > только в логе); HTTP- и gRPC-authclient нормализуют отказ в `errs.PermissionDenied`, `mid.Authorize`
 > отдаёт 403. Безопасные тексты в `mid/authorize.go` (querybyid) и `mid/authen.go` (parsing subject).
 > 10 тест-кейсов sales: 401 → 403. gRPC-хендлер уже отдавал `status.Error` с безопасными текстами.
-> **Остаток (не входил в согласованный план):** ошибки аутентификации (401) всё ещё содержат
-> внутренний текст (`error parsing token: …`, `authentication failed: OPA policy evaluation …`) —
-> кандидат на отдельный маленький шаг.
+> **Остаток закрыт 2026-10-20:** 401 больше не содержат внутренний текст — `mid/authen.go` отдаёт
+> `invalid or missing token` (Bearer/authclient) и `invalid credentials` (Basic), детали парсинга
+> токена, OPA и БД остаются в `Cause` (лог). Ожидания в 21 тест-кейсе sales обновлены.
 
 - **Цель:** правило 4 стандарта.
 - **Что:** тип ошибки хранит `cause error` (для логов, `errors.Unwrap`) и безопасное
@@ -344,8 +349,8 @@
    заменяем конфигом или удаляем?
 3. **Q3.** Имена файлов при нескольких реализациях репозитория (`postgres/`, `sqlite/`,
    `cache/`): `product_repository.go` в каждой папке или `postgres.go`/`sqlite.go`?
-4. **Q4.** Имена пакетов: оставить `package userbus`/`userdb`/`userapp` или
-   переименовать в `package user` (как в примерах стандарта)?
+4. **Q4.** ✅ Пакеты уже `package user`/`audit`/…; алиасы импорта `userbus`/`userdb`/`userapp` и
+   имена `ExtBusiness`/`NewBusiness` **оставлены** (решение 2026-10-20 — не плодить шум в диффе).
 5. **Q5.** Куда `zarf/k8s` и `zarf/helm` — стандарт не описывает (`deploy/`?).
 6. **Q6.** `zarf/keys/*.pem` (dev-ключи JWT) — где хранить и коммитить ли вообще?
 7. **Q7.** Инструмент миграций: `golang-migrate` (предложение), `goose` или darwin с
@@ -359,8 +364,9 @@
 13. **Q13.** Пользователи и БД: auth владеет `users` отдельно или общая БД пока остаётся?
 14. **Q14.** Новые module path — уходим от `github.com/ardanlabs/service`?
 15. **Q15.** Разделение репо с историей (`git filter-repo`) или чистый старт?
-16. **Q16.** `internal/sys/auth` импортирует `internal/usecase/user`, а `internal/sys/dbtest`
-    — все usecase/repository. Это противоречит «sys без бизнес-логики» — переносим
-    auth-правила в `internal/usecase/auth` (+ `deps.go`), а `dbtest` — ближе к `internal/app`?
+16. **Q16.** ✅ Решено 2026-10-20: `internal/sys/auth` остаётся в `sys`, но зависит от локального
+    интерфейса `auth.UserLookup` (`QueryByID`) вместо `userbus.ExtBusiness` и больше не импортирует
+    `internal/usecase/user`. `internal/sys/dbtest` остаётся на месте — это тестовый харнесс, ему
+    нормально собирать все слои.
 17. **Q17.** Метод 1 + декораторы `ExtBusiness` + строгие типы — ментор подтверждает, что
     это не противоречит стандарту (AGENTS.md трактует именно так)?
